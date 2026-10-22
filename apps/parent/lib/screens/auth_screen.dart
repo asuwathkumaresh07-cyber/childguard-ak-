@@ -128,7 +128,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   padding: const EdgeInsets.all(18),
                   child: Row(
                     children: [
-                      Icon(
+                      LiveIcon(
                         Icons.shield_moon_outlined,
                         size: 38,
                         color: Theme.of(context).colorScheme.primary,
@@ -160,7 +160,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Your name',
                     border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.person),
+                    prefixIcon: LiveIcon(Icons.person),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -171,7 +171,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Email address',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.email),
+                  prefixIcon: LiveIcon(Icons.email),
                 ),
               ),
               const SizedBox(height: 12),
@@ -181,14 +181,14 @@ class _AuthScreenState extends State<AuthScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Password',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.lock),
+                  prefixIcon: LiveIcon(Icons.lock),
                 ),
               ),
               if (_message != null) ...[
                 const SizedBox(height: 12),
                 Text(
                   _message!,
-                  style: TextStyle(color: Colors.green.shade800),
+                  style: TextStyle(color: Colors.blue.shade800),
                 ),
               ],
               if (_error != null) ...[

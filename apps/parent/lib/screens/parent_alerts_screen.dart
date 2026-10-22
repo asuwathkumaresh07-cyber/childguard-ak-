@@ -65,7 +65,7 @@ class _ParentAlertsScreenState extends State<ParentAlertsScreen> {
               message: _tamperLabel(event.eventType),
               occurredAt: event.occurredAt,
               icon: Icons.shield_outlined,
-              color: const Color(0xFFB65347),
+              color: const Color(0xFFDC3545),
               isCritical: true,
             ),
           for (final event in zonesByChild[index])
@@ -77,8 +77,8 @@ class _ParentAlertsScreenState extends State<ParentAlertsScreen> {
                   ? Icons.app_blocking_outlined
                   : Icons.location_on_outlined,
               color: event.eventType == 'off_task_app'
-                  ? const Color(0xFFB65347)
-                  : const Color(0xFF347A75),
+                  ? const Color(0xFFDC3545)
+                  : const Color(0xFF172B4D),
               isCritical: event.eventType == 'off_task_app',
             ),
         ],
@@ -136,7 +136,7 @@ class _ParentAlertsScreenState extends State<ParentAlertsScreen> {
           IconButton(
             tooltip: 'Refresh alerts',
             onPressed: _load,
-            icon: const Icon(Icons.refresh),
+            icon: const LiveIcon(Icons.refresh),
           ),
         ],
       ),
@@ -151,10 +151,14 @@ class _ParentAlertsScreenState extends State<ParentAlertsScreen> {
                     GlassCard(
                       child: Row(
                         children: [
-                          GuardianCharacter(
-                            size: 64,
-                            mood: hasCritical ? GuardianMood.alert : GuardianMood.safe,
-                          ),
+                          LiveIcon(
+                              hasCritical
+                                  ? Icons.gpp_bad_rounded
+                                  : Icons.shield_rounded,
+                              size: 64,
+                              color: hasCritical
+                                  ? AppPalette.red
+                                  : AppPalette.blue),
                           const SizedBox(width: 14),
                           Expanded(
                             child: Column(
@@ -164,12 +168,15 @@ class _ParentAlertsScreenState extends State<ParentAlertsScreen> {
                                   _alerts.isEmpty
                                       ? 'Family is Protected'
                                       : '${_alerts.length} Security Event${_alerts.length == 1 ? '' : 's'}',
-                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(fontWeight: FontWeight.w800),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   _alerts.isEmpty
-                                      ? 'No critical alerts. Guardian is on watch.'
+                                      ? 'No critical alerts from your devices.'
                                       : 'Tap on any alert below to inspect.',
                                   style: Theme.of(context).textTheme.bodySmall,
                                 ),
@@ -183,11 +190,12 @@ class _ParentAlertsScreenState extends State<ParentAlertsScreen> {
                     if (_error != null)
                       Card(
                         child: ListTile(
-                          leading: const Icon(Icons.error_outline, color: Colors.red),
+                          leading: const LiveIcon(Icons.error_outline,
+                              color: Colors.red),
                           title: Text(_error!),
                           trailing: IconButton(
                             onPressed: _load,
-                            icon: const Icon(Icons.refresh),
+                            icon: const LiveIcon(Icons.refresh),
                           ),
                         ),
                       ),
@@ -196,17 +204,20 @@ class _ParentAlertsScreenState extends State<ParentAlertsScreen> {
                         padding: const EdgeInsets.all(28),
                         child: Column(
                           children: [
-                            const GuardianCharacter(size: 72, mood: GuardianMood.happy),
+                            const LiveIcon(Icons.shield_rounded,
+                                size: 72, color: AppPalette.blue),
                             const SizedBox(height: 12),
                             const Text(
                               'You’re all caught up!',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 16),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               'Protection status changes and geofence alerts will appear here in real time.',
                               textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.grey.shade600),
                             ),
                           ],
                         ),
@@ -215,24 +226,28 @@ class _ParentAlertsScreenState extends State<ParentAlertsScreen> {
                       ..._alerts.map(
                         (alert) => GlassCard(
                           margin: const EdgeInsets.symmetric(vertical: 5),
-                          accentColor: alert.isCritical ? const Color(0xFFFF1744) : const Color(0xFF0066FF),
-                          showShimmer: alert.isCritical,
+                          accentColor: alert.isCritical
+                              ? const Color(0xFFDC3545)
+                              : const Color(0xFF2563EB),
                           padding: const EdgeInsets.all(4),
                           child: ListTile(
                             leading: alert.isCritical
                                 ? const AnimatedAlertTriangle(
                                     size: 32,
-                                    showPulseRings: false,
                                   )
                                 : CircleAvatar(
-                                    backgroundColor: alert.color.withValues(alpha: .12),
-                                    child: Icon(alert.icon, color: alert.color),
+                                    backgroundColor:
+                                        alert.color.withValues(alpha: .12),
+                                    child: LiveIcon(alert.icon,
+                                        color: alert.color),
                                   ),
                             title: Text(
                               alert.message,
                               style: TextStyle(
                                 fontWeight: FontWeight.w700,
-                                color: alert.isCritical ? Colors.red.shade900 : null,
+                                color: alert.isCritical
+                                    ? Colors.red.shade900
+                                    : null,
                               ),
                             ),
                             subtitle: Text(

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 
 import 'models.dart';
+import 'live_icon.dart';
 
 /// Shows device-reported protection, including the freshness of that report.
 class VpnStatusBadge extends StatelessWidget {
@@ -17,16 +17,16 @@ class VpnStatusBadge extends StatelessWidget {
         DateTime.now().difference(report.lastSeenAt).inMinutes >= 3;
     final enabled = report?.vpnEnabled == true;
     final color = report == null || stale
-        ? Colors.orange
+        ? Colors.blue
         : enabled
-            ? Colors.teal
+            ? Colors.blue
             : Colors.red;
     final label = report == null
         ? 'VPN status unknown'
         : stale
             ? 'Last reported: VPN ${enabled ? "ON" : "OFF"}'
             : 'VPN ${enabled ? "ON" : "OFF"}';
-    Widget icon = Icon(
+    final icon = LiveIcon(
       report == null || stale
           ? Icons.shield_outlined
           : enabled
@@ -34,12 +34,8 @@ class VpnStatusBadge extends StatelessWidget {
               : Icons.gpp_bad_rounded,
       color: color,
       size: 22,
+      loop: report != null && !stale,
     );
-    if (!MediaQuery.disableAnimationsOf(context) && report != null && !stale) {
-      icon = icon
-          .animate(onPlay: (controller) => controller.repeat(reverse: true))
-          .fade(begin: .55, end: 1, duration: 1100.ms);
-    }
     return Semantics(
       label: label,
       child: Row(children: [

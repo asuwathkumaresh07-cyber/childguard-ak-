@@ -16,7 +16,7 @@ void main() {
 
     expect(find.byType(AnimatedAlertTriangle), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.byType(CustomPaint), findsWidgets);
+    expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
   });
 
   testWidgets('LiveAlertBanner renders with moving triangle and actions',
@@ -38,6 +38,7 @@ void main() {
       ),
     );
 
+    await tester.pump();
     expect(find.text('Critical Protection Alert'), findsOneWidget);
     expect(find.text('Child VPN was turned off unexpectedly'), findsOneWidget);
     expect(find.text('Alex'), findsOneWidget);
@@ -48,19 +49,20 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.close));
     expect(dismissed, isTrue);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
   });
 
-  testWidgets('GuardianCharacter renders in safe and alert moods',
-      (tester) async {
+  testWidgets('LiveIcon renders animated protection artwork', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
-          body: GuardianCharacter(size: 80, mood: GuardianMood.safe),
+          body: LiveIcon(Icons.shield_rounded, size: 48),
         ),
       ),
     );
 
-    expect(find.byType(GuardianCharacter), findsOneWidget);
+    expect(find.byType(LiveIcon), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 500));
   });
 

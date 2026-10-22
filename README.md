@@ -10,10 +10,18 @@ sessions crossing midnight are split between days. The VPN icon displays the
 device's reported ON/OFF state and marks reports older than three minutes as
 last reported rather than current.
 
+The interface uses white surfaces, blue controls, and red for warnings. Prebuilt
+animated icons come from `not_static_icons`; library effects use `flutter_animate`.
+Background waves, card shimmer, ripple rings, and the robot mascot are removed.
+Motion respects the device's reduced-animation setting.
+
+[Narrow-phone layout preview](artifacts/activity-preview.png) uses sample activity
+to show the updated graph and VPN status layout.
+
 Parents can add website and app blocks, choose website content categories, set
 daily limits, and assign app activity categories for the selected child. Existing
-family rules still apply and are labeled in the controls. App categories are in
-Apps & Limits; task rewards, autonomy settings, and mood check-ins are in Other.
+family rules still apply and are labeled in the controls. App categories, task
+rewards, autonomy settings, and mood check-ins are in Other.
 Weekly insight cards and simulated alert buttons have been removed. Alerts are
 driven by recorded device events; background push still requires the Firebase
 configuration described below.
@@ -26,7 +34,7 @@ Apply it before installing an updated app that uses these controls.
 
 A dual-app Flutter & Android solution for family network protection and activity monitoring.
 
-- **Parent App** (`apps/parent`): A glass-styled family dashboard with a child monitoring menu, seven-day app-activity charts, live location/geofence views, website-category filtering, custom domain blocks, and app blocking.
+- **Parent App** (`apps/parent`): A blue-and-white family dashboard with animated feature icons, child-specific controls, daily/hourly activity charts, live location/geofence views, website-category filtering, custom domain blocks, and app blocking.
 - **Child App** (`apps/child`): Enforces configured website rules through an Android `VpnService`, queues DNS and app-usage events in a private SQLite database, syncs them to Supabase, and enforces app blocks and daily limits with `AccessibilityService`.
 - **Backend & Database**: Fully integrated with **Supabase** (PostgreSQL, Auth, RLS, Realtime) with an offline fallback mode when dummy keys are used.
 

@@ -127,7 +127,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                         setDialogState(() => dueAt = selected);
                       }
                     },
-                    icon: const Icon(Icons.calendar_month_outlined),
+                    icon: const LiveIcon(Icons.calendar_month_outlined),
                     label: Text(
                       dueAt == null
                           ? 'Add a due date'
@@ -247,13 +247,13 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
           IconButton(
             tooltip: 'Refresh tasks',
             onPressed: _load,
-            icon: const Icon(Icons.refresh),
+            icon: const LiveIcon(Icons.refresh),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _createTask,
-        icon: const Icon(Icons.add_task),
+        icon: const LiveIcon(Icons.add_task),
         label: const Text('Assign task'),
       ),
       body: _loading
@@ -266,10 +266,10 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                   GlassCard(
                     child: Row(
                       children: [
-                        const Icon(
+                        const LiveIcon(
                           Icons.checklist_rounded,
                           size: 34,
-                          color: Color(0xFFFF1744),
+                          color: Color(0xFFDC3545),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -297,11 +297,11 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                   if (_error != null)
                     Card(
                       child: ListTile(
-                        leading: const Icon(Icons.wifi_off),
+                        leading: const LiveIcon(Icons.wifi_off),
                         title: Text(_error!),
                         trailing: IconButton(
                           onPressed: _load,
-                          icon: const Icon(Icons.refresh),
+                          icon: const LiveIcon(Icons.refresh),
                         ),
                       ),
                     ),
@@ -329,7 +329,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                         padding: EdgeInsets.all(24),
                         child: Column(
                           children: [
-                            Icon(Icons.task_alt, size: 42),
+                            LiveIcon(Icons.task_alt, size: 42),
                             SizedBox(height: 8),
                             Text(
                               'No tasks yet',
@@ -373,11 +373,11 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
+                  LiveIcon(
                     task.taskType == 'homework'
                         ? Icons.menu_book_outlined
                         : Icons.check_circle_outline,
-                    color: const Color(0xFF347A75),
+                    color: const Color(0xFF172B4D),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -447,7 +447,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                       ),
                       FilledButton.icon(
                         onPressed: () => _reviewTask(task, approve: true),
-                        icon: const Icon(Icons.check),
+                        icon: const LiveIcon(Icons.check),
                         label: const Text('Approve'),
                       ),
                     ],

@@ -115,7 +115,7 @@ class _AppUsageTile extends StatelessWidget {
       leading: CircleAvatar(
         radius: 18,
         backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-        child: Icon(
+        child: LiveIcon(
           Icons.apps_rounded,
           size: 19,
           color: Theme.of(context).colorScheme.onSecondaryContainer,
@@ -130,7 +130,7 @@ class _AppUsageTile extends StatelessWidget {
           ListTile(
             dense: true,
             contentPadding: const EdgeInsets.only(left: 8, right: 4),
-            leading: const Icon(Icons.history, size: 18),
+            leading: const LiveIcon(Icons.history, size: 18),
             title: Text(
               DateFormat('EEE, h:mm a').format(log.startedAt.toLocal()),
             ),

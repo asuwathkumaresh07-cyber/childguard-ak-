@@ -25,7 +25,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Profile? _profile;
   Family? _familyModel;
   List<FamilyMember> _children = [];
-  List<AppUsageLog> _activityLogs = [];
   bool _loading = true;
   bool _refreshInProgress = false;
   bool _pushRegistrationAttempted = false;
@@ -79,31 +78,12 @@ class _HomeScreenState extends State<HomeScreen> {
       final kids = family == null
           ? <FamilyMember>[]
           : await _family.fetchChildren(family.id);
-      var activityLogs = <AppUsageLog>[];
-      if (family != null && _family.isUsingSupabase && kids.isNotEmpty) {
-        try {
-          final familyId = family.id;
-          final childLogs = await Future.wait(
-            kids.map(
-              (child) => _family.fetchAppUsageLogs(
-                familyId: familyId,
-                childId: child.profileId,
-                limit: 300,
-              ),
-            ),
-          );
-          activityLogs = childLogs.expand((logs) => logs).toList();
-        } catch (error) {
-          reportAppError('load family activity chart', error);
-        }
-      }
       if (!mounted) return;
       final familyChanged = _familyModel?.id != family?.id;
       setState(() {
         _profile = profile;
         _familyModel = family;
         _children = kids;
-        _activityLogs = activityLogs;
         _loading = false;
       });
       if (familyChanged && family != null) {
@@ -275,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               const CircleAvatar(
                 radius: 28,
-                child: Icon(Icons.person_outline, size: 30),
+                child: LiveIcon(Icons.person_outline, size: 30),
               ),
               const SizedBox(height: 10),
               Text(
@@ -291,7 +271,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               const SizedBox(height: 12),
               ListTile(
-                leading: const Icon(Icons.logout),
+                leading: const LiveIcon(Icons.logout),
                 title: const Text('Sign out'),
                 onTap: () {
                   Navigator.pop(context);
@@ -326,7 +306,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     textCapitalization: TextCapitalization.words,
                     decoration: const InputDecoration(
                       labelText: 'Child name',
-                      prefixIcon: Icon(Icons.person),
+                      prefixIcon: LiveIcon(Icons.person),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -335,7 +315,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(
                       labelText: 'Child email',
-                      prefixIcon: Icon(Icons.email),
+                      prefixIcon: LiveIcon(Icons.email),
                     ),
                     validator: (value) {
                       final email = value?.trim() ?? '';
@@ -352,7 +332,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     obscureText: true,
                     decoration: const InputDecoration(
                       labelText: 'Temporary password',
-                      prefixIcon: Icon(Icons.lock),
+                      prefixIcon: LiveIcon(Icons.lock),
                     ),
                     validator: (value) {
                       final minLength = _auth.isUsingSupabase ? 6 : 4;
@@ -422,7 +402,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Row(
             children: [
-              Icon(
+              LiveIcon(
                 Icons.checklist_rounded,
                 color: Theme.of(context).colorScheme.primary,
               ),
@@ -438,13 +418,13 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               if (hasChildren && _family.isUsingSupabase)
                 const Chip(
-                  avatar: Icon(Icons.check_circle, size: 16),
+                  avatar: LiveIcon(Icons.check_circle, size: 16),
                   label: Text('Linked'),
                   visualDensity: VisualDensity.compact,
                 )
               else
                 const Chip(
-                  avatar: Icon(Icons.tune, size: 16),
+                  avatar: LiveIcon(Icons.tune, size: 16),
                   label: Text('Setup needed'),
                   visualDensity: VisualDensity.compact,
                 ),
@@ -499,7 +479,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const Divider(height: 18),
           const ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.phone_android_rounded),
+            leading: LiveIcon(Icons.phone_android_rounded),
             title: Text('Finish device setup in each child profile'),
             subtitle: Text(
               'App limits need Usage access and Accessibility. Location is child opt-in and needs background location permission.',
@@ -519,11 +499,11 @@ class _HomeScreenState extends State<HomeScreen> {
     Widget? trailing,
   }) {
     final color = complete
-        ? const Color(0xFF28775F)
+        ? const Color(0xFF172B4D)
         : Theme.of(context).colorScheme.primary;
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: color),
+      leading: LiveIcon(icon, color: color),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
       subtitle: Text(subtitle),
       trailing: trailing,
@@ -547,8 +527,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 _newAlertCount > 99 ? '99+' : '$_newAlertCount',
               ),
               child: _newAlertCount > 0
-                  ? const AnimatedAlertTriangle(size: 22, showPulseRings: false)
-                  : const Icon(Icons.notifications_none_rounded),
+                  ? const AnimatedAlertTriangle(size: 22)
+                  : const LiveIcon(Icons.notifications_none_rounded),
             ),
           ),
           IconButton(
@@ -556,7 +536,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: _showProfile,
             icon: const CircleAvatar(
               radius: 16,
-              child: Icon(Icons.person_outline, size: 19),
+              child: LiveIcon(Icons.person_outline, size: 19),
             ),
           ),
         ],
@@ -564,7 +544,7 @@ class _HomeScreenState extends State<HomeScreen> {
       drawer: _buildDrawer(),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _createChildAccount,
-        icon: const Icon(Icons.person_add_alt_1),
+        icon: const LiveIcon(Icons.person_add_alt_1),
         label: const Text('Create child'),
       ),
       body: _loading
@@ -576,7 +556,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.error_outline,
+                        const LiveIcon(Icons.error_outline,
                             size: 48, color: Colors.red),
                         const SizedBox(height: 12),
                         const Text(userFacingError,
@@ -597,15 +577,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       padding: const EdgeInsets.all(16),
                       children: [
                         GlassCard(
-                          showShimmer: true,
                           child: Row(
                             children: [
-                              GuardianCharacter(
-                                size: 66,
-                                mood: _newAlertCount > 0
-                                    ? GuardianMood.alert
-                                    : GuardianMood.safe,
-                              ),
+                              LiveIcon(
+                                  _newAlertCount > 0
+                                      ? Icons.gpp_bad_rounded
+                                      : Icons.shield_rounded,
+                                  size: 66,
+                                  color: _newAlertCount > 0
+                                      ? AppPalette.red
+                                      : AppPalette.blue),
                               const SizedBox(width: 14),
                               Expanded(
                                 child: Column(
@@ -632,8 +613,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                               ? 'ALERT'
                                               : 'LIVE',
                                           color: _newAlertCount > 0
-                                              ? const Color(0xFFFF1744)
-                                              : const Color(0xFF00C853),
+                                              ? const Color(0xFFDC3545)
+                                              : const Color(0xFF2563EB),
                                         ),
                                       ],
                                     ),
@@ -644,20 +625,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                           .textTheme
                                           .bodyMedium
                                           ?.copyWith(
-                                            color: const Color(0xFF597277),
+                                            color: const Color(0xFF172B4D),
                                           ),
                                     ),
                                   ],
                                 ),
                               ),
                             ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        GlassCard(
-                          child: DualUsageChart(
-                            logs: _activityLogs,
-                            title: 'Family Screen Time Analytics',
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -674,7 +648,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   fontWeight: FontWeight.bold, fontSize: 16),
                             ),
                             TextButton.icon(
-                              icon: const Icon(Icons.add, size: 16),
+                              icon: const LiveIcon(Icons.add, size: 16),
                               onPressed: _createChildAccount,
                               label: const Text('Add Child'),
                             ),
@@ -686,7 +660,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             padding: const EdgeInsets.all(24),
                             child: Column(
                               children: [
-                                Icon(Icons.phone_android,
+                                LiveIcon(Icons.phone_android,
                                     size: 48, color: Colors.grey.shade400),
                                 const SizedBox(height: 12),
                                 const Text(
@@ -743,7 +717,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.warning_amber_rounded,
+                    const LiveIcon(Icons.warning_amber_rounded,
                         size: 13, color: Colors.red),
                     const SizedBox(width: 4),
                     Text(
@@ -760,7 +734,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 8),
         GlassCard(
-          showShimmer: true,
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Column(
             children: [
@@ -768,14 +741,14 @@ class _HomeScreenState extends State<HomeScreen> {
               ListTile(
                 leading: CircleAvatar(
                   backgroundColor: const Color(0xFFE0F2F1),
-                  child: Icon(Icons.security, color: Colors.teal.shade800),
+                  child: LiveIcon(Icons.security, color: Colors.blue.shade800),
                 ),
                 title: const Text('Web Shield & Category Filters',
                     style:
                         TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                 subtitle: const Text(
                     'Block adult sites, malicious domains & 9 categories'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const LiveIcon(Icons.chevron_right),
                 onTap: () {
                   if (familyId.isNotEmpty) {
                     Navigator.of(context).push(
@@ -793,14 +766,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 leading: CircleAvatar(
                   backgroundColor: const Color(0xFFE8EAF6),
                   child:
-                      Icon(Icons.apps_rounded, color: Colors.indigo.shade700),
+                      LiveIcon(Icons.apps_rounded, color: Colors.blue.shade700),
                 ),
                 title: const Text('App Guard & Time Limits',
                     style:
                         TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                 subtitle: const Text(
                     'Lock distracting games & set daily minute limits'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const LiveIcon(Icons.chevron_right),
                 onTap: () {
                   if (familyId.isNotEmpty) {
                     Navigator.of(context).push(
@@ -817,8 +790,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ListTile(
                 leading: CircleAvatar(
                   backgroundColor: const Color(0xFFFFEBEE),
-                  child:
-                      Icon(Icons.warning_rounded, color: Colors.red.shade700),
+                  child: LiveIcon(Icons.warning_rounded,
+                      color: Colors.red.shade700),
                 ),
                 title: Row(
                   children: [
@@ -847,7 +820,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 subtitle: const Text(
                     'Real-time alerts with animated moving red triangle'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const LiveIcon(Icons.chevron_right),
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute<void>(
@@ -865,15 +838,15 @@ class _HomeScreenState extends State<HomeScreen> {
               ListTile(
                 leading: CircleAvatar(
                   backgroundColor: const Color(0xFFF3E5F5),
-                  child: Icon(Icons.checklist_rounded,
-                      color: Colors.purple.shade700),
+                  child: LiveIcon(Icons.checklist_rounded,
+                      color: Colors.blue.shade700),
                 ),
                 title: const Text('Tasks, Chores & Homework',
                     style:
                         TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                 subtitle: const Text(
                     'Photo proof verification, streaks & screen time credits'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const LiveIcon(Icons.chevron_right),
                 onTap: () {
                   if (firstKid != null) {
                     Navigator.of(context).push(
@@ -896,14 +869,15 @@ class _HomeScreenState extends State<HomeScreen> {
               ListTile(
                 leading: CircleAvatar(
                   backgroundColor: const Color(0xFFE0F7FA),
-                  child: Icon(Icons.radar_rounded, color: Colors.cyan.shade800),
+                  child: LiveIcon(Icons.radar_rounded,
+                      color: Colors.blue.shade800),
                 ),
                 title: const Text('GPS Sentinel & Safe Zones',
                     style:
                         TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                 subtitle: const Text(
                     'Interactive OpenStreetMap tracking & geofence perimeter alerts'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const LiveIcon(Icons.chevron_right),
                 onTap: () {
                   if (firstKid != null) {
                     Navigator.of(context).push(
@@ -926,16 +900,16 @@ class _HomeScreenState extends State<HomeScreen> {
               // 6. Categorized Logs (Live stream + Daily/Hourly)
               ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: const Color(0xFFFFF3E0),
-                  child: Icon(Icons.history_rounded,
-                      color: Colors.orange.shade800),
+                  backgroundColor: const Color(0xFFEAF1FF),
+                  child: LiveIcon(Icons.history_rounded,
+                      color: Colors.blue.shade800),
                 ),
                 title: const Text('Categorized Activity Logs',
                     style:
                         TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                subtitle: const Text(
-                    'Live events and daily or hourly usage graphs'),
-                trailing: const Icon(Icons.chevron_right),
+                subtitle:
+                    const Text('Live events and daily or hourly usage graphs'),
+                trailing: const LiveIcon(Icons.chevron_right),
                 onTap: () {
                   if (firstKid != null) {
                     Navigator.of(context).push(
@@ -974,7 +948,7 @@ class _HomeScreenState extends State<HomeScreen> {
               CircleAvatar(
                 radius: 22,
                 backgroundColor: const Color(0xFFE0F2F1),
-                child: Icon(Icons.child_care_rounded,
+                child: LiveIcon(Icons.child_care_rounded,
                     color: Theme.of(context).colorScheme.primary, size: 24),
               ),
               const SizedBox(width: 12),
@@ -988,7 +962,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 2),
                     const LivePulseBadge(
                       label: 'PROTECTED',
-                      color: Color(0xFF00C853),
+                      color: Color(0xFF2563EB),
                     ),
                   ],
                 ),
@@ -1013,7 +987,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text('Open', style: TextStyle(fontSize: 12)),
-                    Icon(Icons.chevron_right, size: 16),
+                    LiveIcon(Icons.chevron_right, size: 16),
                   ],
                 ),
               ),
@@ -1098,8 +1072,8 @@ class _HomeScreenState extends State<HomeScreen> {
     required VoidCallback onTap,
   }) {
     return ActionChip(
-      avatar:
-          Icon(icon, size: 14, color: Theme.of(context).colorScheme.primary),
+      avatar: LiveIcon(icon,
+          size: 14, color: Theme.of(context).colorScheme.primary),
       label: Text(label,
           style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
       backgroundColor: Colors.white.withValues(alpha: 0.8),
@@ -1130,8 +1104,8 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: EdgeInsets.fromLTRB(14, 12, 14, 20),
               child: Row(
                 children: [
-                  Icon(Icons.shield_moon_outlined,
-                      color: Color(0xFFFF1744), size: 30),
+                  LiveIcon(Icons.shield_moon_outlined,
+                      color: Color(0xFFDC3545), size: 30),
                   SizedBox(width: 10),
                   Text(
                     'Family Guard',
@@ -1150,7 +1124,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Text(
                 'MONITORING',
                 style: TextStyle(
-                  color: Color(0xFF6A8387),
+                  color: Color(0xFF172B4D),
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 1.1,
@@ -1159,7 +1133,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             if (_children.isEmpty)
               const ListTile(
-                leading: Icon(Icons.child_care_outlined),
+                leading: LiveIcon(Icons.child_care_outlined),
                 title: Text('No child profiles yet'),
                 dense: true,
               )
@@ -1193,7 +1167,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Text(
                 'PROTECTION',
                 style: TextStyle(
-                  color: Color(0xFF6A8387),
+                  color: Color(0xFF172B4D),
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 1.1,
@@ -1243,9 +1217,9 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: ListTile(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        leading: Icon(icon, color: const Color(0xFFFF1744)),
+        leading: LiveIcon(icon, color: const Color(0xFFDC3545)),
         title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-        trailing: const Icon(Icons.chevron_right, size: 18),
+        trailing: const LiveIcon(Icons.chevron_right, size: 18),
         onTap: onTap,
       ),
     );

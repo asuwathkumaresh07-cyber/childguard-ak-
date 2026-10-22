@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'animated_alert_triangle.dart';
-import 'guardian_character.dart';
+import 'live_icon.dart';
+import 'app_palette.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'models.dart';
 import 'dual_usage_chart.dart';
 import 'vpn_status_badge.dart';
@@ -103,7 +105,7 @@ class _CategorizedLogsViewState extends State<CategorizedLogsView> {
                 label: 'Live Log',
                 iconWidget: const _LivePulseDot(),
                 active: _category == LogCategory.live,
-                activeColor: const Color(0xFF00897B),
+                activeColor: const Color(0xFF172B4D),
               ),
               _buildCategoryTab(
                 category: LogCategory.usage,
@@ -134,7 +136,7 @@ class _CategorizedLogsViewState extends State<CategorizedLogsView> {
                           vertical: 10, horizontal: 12),
                       filled: true,
                       fillColor: isDark
-                          ? const Color(0xFF1F2A2E)
+                          ? const Color(0xFF172B4D)
                           : Colors.white.withValues(alpha: 0.8),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -190,7 +192,9 @@ class _CategorizedLogsViewState extends State<CategorizedLogsView> {
       child: GestureDetector(
         onTap: () => setState(() => _category = category),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 220),
           padding: const EdgeInsets.symmetric(vertical: 8),
           alignment: Alignment.center,
           decoration: BoxDecoration(
@@ -211,8 +215,11 @@ class _CategorizedLogsViewState extends State<CategorizedLogsView> {
             children: [
               iconWidget,
               const SizedBox(width: 6),
-              Text(
+              Flexible(
+                  child: Text(
                 label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
@@ -222,7 +229,7 @@ class _CategorizedLogsViewState extends State<CategorizedLogsView> {
                           ? Colors.white70
                           : Colors.black87),
                 ),
-              ),
+              )),
             ],
           ),
         ),
@@ -315,7 +322,8 @@ class _CategorizedLogsViewState extends State<CategorizedLogsView> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const GuardianCharacter(size: 70, mood: GuardianMood.safe),
+              const LiveIcon(Icons.shield_rounded,
+                  size: 70, color: AppPalette.blue),
               const SizedBox(height: 12),
               const Text(
                 'No events match your filter',
@@ -345,9 +353,9 @@ class _CategorizedLogsViewState extends State<CategorizedLogsView> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: item.isWarning
-                ? (isDark ? const Color(0xFF331A1C) : const Color(0xFFFFF0F0))
+                ? (isDark ? const Color(0xFF172B4D) : const Color(0xFFFFF0F0))
                 : (isDark
-                    ? const Color(0xFF172427)
+                    ? const Color(0xFF172B4D)
                     : Colors.white.withValues(alpha: 0.85)),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
@@ -365,7 +373,6 @@ class _CategorizedLogsViewState extends State<CategorizedLogsView> {
               if (item.isWarning)
                 const AnimatedAlertTriangle(
                   size: 32,
-                  showPulseRings: false,
                 )
               else if (item.type == _LiveEventType.domain)
                 CircleAvatar(
@@ -379,7 +386,7 @@ class _CategorizedLogsViewState extends State<CategorizedLogsView> {
                   radius: 18,
                   backgroundColor: const Color(0xFFE1F5FE),
                   child: const Icon(Icons.smartphone,
-                      color: Color(0xFF0288D1), size: 19),
+                      color: Color(0xFF2563EB), size: 19),
                 ),
               const SizedBox(width: 12),
 
@@ -490,49 +497,21 @@ class _LiveEventItem {
   final dynamic rawEvent;
 }
 
-class _LivePulseDot extends StatefulWidget {
+class _LivePulseDot extends StatelessWidget {
   const _LivePulseDot();
 
   @override
-  State<_LivePulseDot> createState() => _LivePulseDotState();
-}
-
-class _LivePulseDotState extends State<_LivePulseDot>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1000),
-  )..repeat(reverse: true);
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (context, _) {
-        final scale = 0.8 + _ctrl.value * 0.4;
-        final alpha = 0.5 + _ctrl.value * 0.5;
-        return Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: const Color(0xFF00E676).withValues(alpha: alpha),
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF00E676).withValues(alpha: alpha * 0.6),
-                blurRadius: 4 * scale,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-        );
-      },
-    );
+    Widget dot = Container(
+        width: 8,
+        height: 8,
+        decoration: const BoxDecoration(
+            color: AppPalette.blue, shape: BoxShape.circle));
+    if (!MediaQuery.disableAnimationsOf(context)) {
+      dot = dot
+          .animate(onPlay: (controller) => controller.repeat(reverse: true))
+          .fade(begin: .4, end: 1, duration: 1200.ms);
+    }
+    return dot;
   }
 }

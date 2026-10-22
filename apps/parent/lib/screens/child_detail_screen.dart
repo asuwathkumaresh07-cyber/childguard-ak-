@@ -389,7 +389,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
         actions: [
           IconButton(
             tooltip: 'Child tasks',
-            icon: const Icon(Icons.checklist_outlined),
+            icon: const LiveIcon(Icons.checklist_outlined),
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
@@ -404,7 +404,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
           ),
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh),
+            icon: const LiveIcon(Icons.refresh),
             onPressed: () => _load(),
           ),
         ],
@@ -413,11 +413,13 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
           isScrollable: true,
           tabAlignment: TabAlignment.start,
           tabs: const [
-            Tab(icon: Icon(Icons.history_rounded), text: 'Categorized Logs'),
-            Tab(icon: Icon(Icons.public), text: 'Web Shield'),
-            Tab(icon: Icon(Icons.apps), text: 'Apps & Limits'),
-            Tab(icon: Icon(Icons.radar), text: 'Location & Zones'),
-            Tab(icon: Icon(Icons.more_horiz), text: 'Other'),
+            Tab(
+                icon: LiveIcon(Icons.history_rounded),
+                text: 'Categorized Logs'),
+            Tab(icon: LiveIcon(Icons.public), text: 'Web Shield'),
+            Tab(icon: LiveIcon(Icons.apps), text: 'Apps & Limits'),
+            Tab(icon: LiveIcon(Icons.radar), text: 'Location & Zones'),
+            Tab(icon: LiveIcon(Icons.more_horiz), text: 'Other'),
           ],
         ),
       ),
@@ -429,7 +431,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                   if (_loadError != null)
                     MaterialBanner(
                       content: Text(_loadError!),
-                      leading: const Icon(Icons.cloud_off),
+                      leading: const LiveIcon(Icons.cloud_off),
                       actions: [
                         TextButton(
                           onPressed: () => _load(),
@@ -455,6 +457,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                           childId: widget.childId,
                           childName: widget.childName,
                           showOther: true,
+                          extraSections: _buildAppCategoryControls(),
                         ),
                       ],
                     ),
@@ -474,7 +477,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
             alignment: Alignment.centerRight,
             child: TextButton.icon(
                 onPressed: () => _addCustomBlock(app: false),
-                icon: const Icon(Icons.add),
+                icon: const LiveIcon(Icons.add),
                 label: const Text('Block website'))),
         // Filter chips and search bar
         Padding(
@@ -484,7 +487,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
               TextField(
                 decoration: InputDecoration(
                   hintText: 'Search domain activities...',
-                  prefixIcon: const Icon(Icons.search, size: 20),
+                  prefixIcon: const LiveIcon(Icons.search, size: 20),
                   contentPadding: const EdgeInsets.symmetric(vertical: 8),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -510,7 +513,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                   ChoiceChip(
                     label: const Text('Allowed'),
                     selected: _domainFilter == 'allowed',
-                    selectedColor: Colors.green.shade100,
+                    selectedColor: Colors.blue.shade100,
                     onSelected: (_) =>
                         setState(() => _domainFilter = 'allowed'),
                   ),
@@ -534,7 +537,8 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.public, size: 48, color: Colors.grey.shade400),
+                      LiveIcon(Icons.public,
+                          size: 48, color: Colors.grey.shade400),
                       const SizedBox(height: 12),
                       Text(
                         _domains.isEmpty
@@ -561,14 +565,14 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                         leading: CircleAvatar(
                           backgroundColor: d.isBlocked
                               ? Colors.red.shade100
-                              : Colors.green.shade100,
-                          child: Icon(
+                              : Colors.blue.shade100,
+                          child: LiveIcon(
                             d.isBlocked
                                 ? Icons.block
                                 : Icons.check_circle_outline,
                             color: d.isBlocked
                                 ? Colors.red.shade800
-                                : Colors.green.shade800,
+                                : Colors.blue.shade800,
                             size: 20,
                           ),
                         ),
@@ -586,12 +590,12 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                               decoration: BoxDecoration(
                                 color: d.isBlocked
                                     ? Colors.red.shade50
-                                    : Colors.green.shade50,
+                                    : Colors.blue.shade50,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
                                   color: d.isBlocked
                                       ? Colors.red.shade300
-                                      : Colors.green.shade300,
+                                      : Colors.blue.shade300,
                                 ),
                               ),
                               child: Text(
@@ -601,7 +605,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                                   fontWeight: FontWeight.bold,
                                   color: d.isBlocked
                                       ? Colors.red.shade800
-                                      : Colors.green.shade800,
+                                      : Colors.blue.shade800,
                                 ),
                               ),
                             ),
@@ -620,7 +624,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                                 child: const Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.shield, size: 14),
+                                    LiveIcon(Icons.shield, size: 14),
                                     SizedBox(width: 4),
                                     Text('Block',
                                         style: TextStyle(fontSize: 12)),
@@ -630,7 +634,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                             else
                               IconButton(
                                 tooltip: 'Unblock domain',
-                                icon: const Icon(Icons.lock_open, size: 18),
+                                icon: const LiveIcon(Icons.lock_open, size: 18),
                                 onPressed: () => _unblockDomain(d.domain),
                               ),
                           ],
@@ -798,7 +802,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                 Navigator.pop(dialogContext);
                 _showMessage('Protection code copied.');
               },
-              icon: const Icon(Icons.copy),
+              icon: const LiveIcon(Icons.copy),
               label: const Text('Copy code'),
             ),
             FilledButton(
@@ -896,12 +900,16 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
 
   Widget _buildProtectionStatusBanner() {
     final vpnEnabled = _deviceStatus?.vpnEnabled;
+    final stale = _deviceStatus != null &&
+        DateTime.now().difference(_deviceStatus!.lastSeenAt).inMinutes >= 3;
     final action = vpnEnabled == true ? 'disable' : 'enable';
     final statusText = vpnEnabled == null
         ? 'Waiting for Child app to report VPN status'
-        : vpnEnabled
-            ? 'Protection is Active'
-            : 'Protection is OFF';
+        : stale
+            ? 'Last reported: VPN ${vpnEnabled ? "ON" : "OFF"}'
+            : vpnEnabled
+                ? 'Protection is Active'
+                : 'Protection is OFF';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
@@ -909,10 +917,15 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            GuardianCharacter(
-              size: 48,
-              mood:
-                  vpnEnabled == false ? GuardianMood.alert : GuardianMood.safe,
+            LiveIcon(
+              vpnEnabled == null
+                  ? Icons.shield_outlined
+                  : vpnEnabled
+                      ? Icons.shield_rounded
+                      : Icons.gpp_bad_rounded,
+              size: 40,
+              loop: vpnEnabled != null && !stale,
+              color: vpnEnabled == false ? AppPalette.red : AppPalette.blue,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -921,13 +934,13 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                 children: [
                   Row(
                     children: [
-                      Icon(
+                      LiveIcon(
                         vpnEnabled == true
                             ? Icons.shield
                             : Icons.shield_outlined,
                         size: 16,
                         color: vpnEnabled == true
-                            ? const Color(0xFF2D806D)
+                            ? const Color(0xFF172B4D)
                             : Theme.of(context).colorScheme.error,
                       ),
                       const SizedBox(width: 4),
@@ -971,6 +984,53 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
     );
   }
 
+  List<Widget> _buildAppCategoryControls() => [
+        const Text('App activity categories',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Text('Classify apps for ${widget.childName}.'),
+        if (_apps.isEmpty)
+          const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                  'App categories appear after the child device syncs usage.')),
+        ...{
+          for (final log in _apps) log.packageName: log.appLabel
+        }.entries.map((app) => ListTile(
+              title: Text(app.value.isEmpty ? app.key : app.value),
+              trailing: DropdownButton<String>(
+                value: _appCategories[app.key] ?? 'unproductive',
+                items: [
+                  'educational',
+                  'creative',
+                  'social',
+                  'entertainment',
+                  'unproductive'
+                ]
+                    .map((category) => DropdownMenuItem(
+                        value: category,
+                        child: Text(
+                            category[0].toUpperCase() + category.substring(1))))
+                    .toList(),
+                onChanged: (category) async {
+                  if (category == null) return;
+                  try {
+                    await _family.saveChildAppCategoryOverride(
+                        familyId: widget.familyId,
+                        childId: widget.childId,
+                        packageName: app.key,
+                        category: category);
+                    await _load(silent: true);
+                  } catch (error) {
+                    if (mounted) {
+                      showAppError(context, 'update app category', error);
+                    }
+                  }
+                },
+              ),
+            )),
+        const Divider(height: 32),
+      ];
+
   Widget _buildControlsTab() {
     if (!_family.isUsingSupabase) {
       return const Center(
@@ -1007,12 +1067,12 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                   ButtonSegment(
                     value: 'strict',
                     label: Text('Strict'),
-                    icon: Icon(Icons.lock),
+                    icon: LiveIcon(Icons.lock),
                   ),
                   ButtonSegment(
                     value: 'friendly',
                     label: Text('Friendly'),
-                    icon: Icon(Icons.favorite_outline),
+                    icon: LiveIcon(Icons.favorite_outline),
                   ),
                 ],
                 selected: {_protectionMode},
@@ -1039,7 +1099,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
             ..._vpnRequests.where((request) => request.status == 'pending').map(
                   (request) => ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.shield_outlined),
+                    leading: const LiveIcon(Icons.shield_outlined),
                     title: const Text('Child requests Protection OFF'),
                     subtitle: Text(
                       DateFormat('MMM d, h:mm a')
@@ -1052,13 +1112,13 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                           tooltip: 'Deny request',
                           onPressed: () =>
                               _resolveVpnRequest(request, approve: false),
-                          icon: const Icon(Icons.close, color: Colors.red),
+                          icon: const LiveIcon(Icons.close, color: Colors.red),
                         ),
                         IconButton(
                           tooltip: 'Approve request',
                           onPressed: () =>
                               _resolveVpnRequest(request, approve: true),
-                          icon: const Icon(Icons.check, color: Colors.green),
+                          icon: const LiveIcon(Icons.check, color: Colors.blue),
                         ),
                       ],
                     ),
@@ -1085,12 +1145,12 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                 children: [
                   FilledButton.icon(
                     onPressed: () => _generateProtectionCode('enable'),
-                    icon: const Icon(Icons.shield),
+                    icon: const LiveIcon(Icons.shield),
                     label: const Text('Code to turn ON'),
                   ),
                   OutlinedButton.icon(
                     onPressed: () => _generateProtectionCode('disable'),
-                    icon: const Icon(Icons.shield_outlined),
+                    icon: const LiveIcon(Icons.shield_outlined),
                     label: const Text('Code to turn OFF'),
                   ),
                 ],
@@ -1141,9 +1201,9 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                       (event) => ListTile(
                         dense: true,
                         contentPadding: EdgeInsets.zero,
-                        leading: const Icon(
+                        leading: const LiveIcon(
                           Icons.warning_amber,
-                          color: Colors.deepOrange,
+                          color: Colors.blue,
                         ),
                         title: Text(_tamperEventLabel(event.eventType)),
                         subtitle: Text(
@@ -1166,7 +1226,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
             ),
             FilledButton.icon(
               onPressed: _setAppTimeLimit,
-              icon: const Icon(Icons.add),
+              icon: const LiveIcon(Icons.add),
               label: const Text('Add'),
             ),
           ],
@@ -1183,13 +1243,13 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
             final minutes = limit.dailyLimitSeconds ~/ 60;
             return ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.timer_outlined),
+              leading: const LiveIcon(Icons.timer_outlined),
               title: Text(appName),
               subtitle: Text('$minutes minutes per day · ${limit.packageName}'),
               trailing: IconButton(
                 tooltip: 'Remove app limit',
                 onPressed: () => _removeAppTimeLimit(limit),
-                icon: const Icon(Icons.delete_outline),
+                icon: const LiveIcon(Icons.delete_outline),
               ),
             );
           }),
@@ -1200,7 +1260,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
           TextButton.icon(
               onPressed: () => _addCustomBlock(app: true),
-              icon: const Icon(Icons.add),
+              icon: const LiveIcon(Icons.add),
               label: const Text('Add'))
         ]),
         ...{
@@ -1267,42 +1327,6 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                     },
             )),
         const Divider(height: 32),
-        const Text('App activity categories',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        ...{for (final log in _apps) log.packageName: log.appLabel}
-            .entries
-            .map((app) => ListTile(
-                  title: Text(app.value.isEmpty ? app.key : app.value),
-                  trailing: DropdownButton<String>(
-                    value: _appCategories[app.key] ?? 'unproductive',
-                    items: [
-                      'educational',
-                      'creative',
-                      'social',
-                      'entertainment',
-                      'unproductive'
-                    ]
-                        .map((category) => DropdownMenuItem(
-                            value: category, child: Text(category)))
-                        .toList(),
-                    onChanged: (category) async {
-                      if (category == null) return;
-                      try {
-                        await _family.saveChildAppCategoryOverride(
-                            familyId: widget.familyId,
-                            childId: widget.childId,
-                            packageName: app.key,
-                            category: category);
-                        await _load(silent: true);
-                      } catch (error) {
-                        if (mounted) {
-                          showAppError(context, 'update app category', error);
-                        }
-                      }
-                    },
-                  ),
-                )),
-        const Divider(height: 32),
         const Text(
           'Extra-time requests',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -1321,7 +1345,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                 : request.appLabel;
             return ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.more_time),
+              leading: const LiveIcon(Icons.more_time),
               title: Text(appName),
               subtitle: Text(
                 'Requests ${request.requestedMinutes} minutes'
@@ -1335,13 +1359,13 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                     tooltip: 'Deny request',
                     onPressed: () =>
                         _resolveExtraTimeRequest(request, approve: false),
-                    icon: const Icon(Icons.close, color: Colors.red),
+                    icon: const LiveIcon(Icons.close, color: Colors.red),
                   ),
                   IconButton(
                     tooltip: 'Approve request',
                     onPressed: () =>
                         _resolveExtraTimeRequest(request, approve: true),
-                    icon: const Icon(Icons.check, color: Colors.green),
+                    icon: const LiveIcon(Icons.check, color: Colors.blue),
                   ),
                 ],
               ),
@@ -1355,9 +1379,9 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
     return ListTile(
       dense: true,
       contentPadding: EdgeInsets.zero,
-      leading: Icon(
+      leading: LiveIcon(
         enabled ? Icons.check_circle : Icons.error,
-        color: enabled ? Colors.green : Colors.red,
+        color: enabled ? Colors.blue : Colors.red,
       ),
       title: Text(label),
       trailing: Text(enabled ? 'ON' : 'OFF'),

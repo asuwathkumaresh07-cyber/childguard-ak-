@@ -112,9 +112,8 @@ class _SupabaseConfigDialogState extends State<SupabaseConfigDialog> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isConnected
-                    ? Colors.green.shade50
-                    : Colors.amber.shade50,
+                color:
+                    isConnected ? Colors.green.shade50 : Colors.amber.shade50,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: isConnected
@@ -126,7 +125,9 @@ class _SupabaseConfigDialogState extends State<SupabaseConfigDialog> {
                 children: [
                   Icon(
                     isConnected ? Icons.check_circle : Icons.info_outline,
-                    color: isConnected ? Colors.green.shade800 : Colors.amber.shade900,
+                    color: isConnected
+                        ? Colors.green.shade800
+                        : Colors.amber.shade900,
                   ),
                   const SizedBox(width: 8),
                   Expanded(

@@ -130,7 +130,7 @@ class _DualUsageChartState extends State<DualUsageChart> {
 
         // The selector chooses one graph at a time.
         Container(
-          height: 34,
+          height: 44,
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
             color:
@@ -148,8 +148,10 @@ class _DualUsageChartState extends State<DualUsageChart> {
 
         // 1. Daily Usage Bar Graph
         if (_mode == DualChartMode.daily) ...[
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               Text(
                 'Daily Usage (Bar Graph)',
@@ -188,8 +190,10 @@ class _DualUsageChartState extends State<DualUsageChart> {
         if (_mode == DualChartMode.hourly) ...[
           _buildHourlyDaySelector(days, primary),
           const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               Text(
                 'Hourly Usage (Point Graph)',
@@ -233,15 +237,13 @@ class _DualUsageChartState extends State<DualUsageChart> {
             padding: const EdgeInsets.symmetric(horizontal: 14),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
-                Text('00h', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                Text('04h', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                Text('08h', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                Text('12h', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                Text('16h', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                Text('20h', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                Text('23h', style: TextStyle(fontSize: 10, color: Colors.grey)),
-              ],
+              children: ['00h', '04h', '08h', '12h', '16h', '20h', '23h']
+                  .map((label) => Expanded(
+                      child: Text(label,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                              fontSize: 9, color: Colors.grey))))
+                  .toList(),
             ),
           ),
           if (_hoveredHour != null) ...[
@@ -297,9 +299,9 @@ class _DualUsageChartState extends State<DualUsageChart> {
     final isIncrease = changeSeconds > 0;
     final isDecrease = changeSeconds < 0;
     final color = isIncrease
-        ? const Color(0xFFB65347)
+        ? const Color(0xFFDC3545)
         : isDecrease
-            ? const Color(0xFF2D806D)
+            ? const Color(0xFF172B4D)
             : Theme.of(context).colorScheme.onSurfaceVariant;
     final icon = isIncrease
         ? Icons.trending_up
@@ -307,7 +309,7 @@ class _DualUsageChartState extends State<DualUsageChart> {
             ? Icons.trending_down
             : Icons.trending_flat;
     final value = hasPreviousUsage
-        ? '${changePercent!.round()}%'
+        ? '${isIncrease ? "+" : isDecrease ? "−" : ""}${changePercent!.round()}%'
         : (changeSeconds > 0 ? 'New' : 'No change');
 
     return Tooltip(
@@ -340,7 +342,7 @@ class _DualUsageChartState extends State<DualUsageChart> {
 
   Widget _buildHourlyDaySelector(List<DateTime> days, Color primary) {
     return SizedBox(
-      height: 32,
+      height: 44,
       child: Row(
         children: [
           for (var index = 0; index < days.length; index++)
@@ -348,7 +350,8 @@ class _DualUsageChartState extends State<DualUsageChart> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 2),
                 child: ChoiceChip(
-                  label: Text(DateFormat('E').format(days[index])),
+                  label: Text(DateFormat('E').format(days[index]),
+                      style: const TextStyle(fontSize: 11)),
                   selected: _selectedDayIndex == index,
                   onSelected: (_) => setState(() {
                     _selectedDayIndex = index;
@@ -372,7 +375,9 @@ class _DualUsageChartState extends State<DualUsageChart> {
       child: GestureDetector(
         onTap: () => setState(() => _mode = mode),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 200),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: active ? activeColor : Colors.transparent,
@@ -516,17 +521,20 @@ class _DailyBarChartWidget extends StatelessWidget {
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: Text(
-                      DateFormat('E').format(day),
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight:
-                            isSelected ? FontWeight.w800 : FontWeight.w600,
-                        color: isSelected
-                            ? primaryColor
-                            : (isDark ? Colors.white70 : Colors.black87),
-                      ),
-                    ),
+                    child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          DateFormat('E').format(day),
+                          maxLines: 1,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight:
+                                isSelected ? FontWeight.w800 : FontWeight.w600,
+                            color: isSelected
+                                ? primaryColor
+                                : (isDark ? Colors.white70 : Colors.black87),
+                          ),
+                        )),
                   ),
                 ],
               ),

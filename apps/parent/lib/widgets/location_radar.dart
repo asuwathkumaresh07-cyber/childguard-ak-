@@ -20,13 +20,8 @@ class LocationRadar extends StatefulWidget {
   State<LocationRadar> createState() => _LocationRadarState();
 }
 
-class _LocationRadarState extends State<LocationRadar>
-    with SingleTickerProviderStateMixin {
+class _LocationRadarState extends State<LocationRadar> {
   final _mapController = MapController();
-  late final AnimationController _pulse = AnimationController(
-    vsync: this,
-    duration: const Duration(seconds: 2),
-  )..repeat();
 
   @override
   void didUpdateWidget(covariant LocationRadar oldWidget) {
@@ -46,7 +41,6 @@ class _LocationRadarState extends State<LocationRadar>
 
   @override
   void dispose() {
-    _pulse.dispose();
     super.dispose();
   }
 
@@ -110,9 +104,9 @@ class _LocationRadarState extends State<LocationRadar>
                         point: current,
                         radius: accuracy.clamp(10, 500).toDouble(),
                         useRadiusInMeter: true,
-                        color: const Color(0xFF267B74).withValues(alpha: .12),
+                        color: const Color(0xFF172B4D).withValues(alpha: .12),
                         borderColor:
-                            const Color(0xFF267B74).withValues(alpha: .34),
+                            const Color(0xFF172B4D).withValues(alpha: .34),
                         borderStrokeWidth: 1,
                       ),
                   ],
@@ -126,7 +120,7 @@ class _LocationRadarState extends State<LocationRadar>
                             LatLng(sample.latitude, sample.longitude),
                         ],
                         strokeWidth: 4,
-                        color: const Color(0xFF267B74),
+                        color: const Color(0xFF172B4D),
                         borderStrokeWidth: 1,
                         borderColor: Colors.white,
                       ),
@@ -150,46 +144,18 @@ class _LocationRadarState extends State<LocationRadar>
                         point: current,
                         width: 54,
                         height: 54,
-                        child: AnimatedBuilder(
-                          animation: _pulse,
-                          builder: (context, _) {
-                            final pulse = _pulse.value;
-                            return Center(
-                              child: Container(
-                                width: 24 + pulse * 26,
-                                height: 24 + pulse * 26,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: const Color(0xFF24756E)
-                                      .withValues(alpha: .22 * (1 - pulse)),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color:
-                                          Colors.white.withValues(alpha: .95),
-                                      blurRadius: 4,
-                                      spreadRadius: 2,
-                                    ),
-                                  ],
-                                ),
-                                child: Center(
-                                  child: Container(
-                                    width: 18,
-                                    height: 18,
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFF24756E),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.person_pin_circle,
-                                      size: 16,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                        child: Center(
+                            child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                              color: AppPalette.blue,
+                              shape: BoxShape.circle,
+                              border:
+                                  Border.all(color: Colors.white, width: 3)),
+                          child: const LiveIcon(Icons.my_location,
+                              size: 19, color: Colors.white),
+                        )),
                       ),
                   ],
                 ),
@@ -263,10 +229,10 @@ class _LocationRadarState extends State<LocationRadar>
   }
 
   Color _zoneColor(String type) => switch (type) {
-        'home' => const Color(0xFF388E75),
-        'school' => const Color(0xFF5278C8),
-        'tuition' => const Color(0xFFB87934),
-        _ => const Color(0xFF8B65B7),
+        'home' => const Color(0xFF172B4D),
+        'school' => const Color(0xFF2563EB),
+        'tuition' => const Color(0xFF2563EB),
+        _ => const Color(0xFF2563EB),
       };
 }
 
@@ -327,7 +293,7 @@ class _MapControl extends StatelessWidget {
         tooltip: tooltip,
         visualDensity: VisualDensity.compact,
         onPressed: onPressed,
-        icon: Icon(icon, size: 20),
+        icon: LiveIcon(icon, size: 20),
       ),
     );
   }

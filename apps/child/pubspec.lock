@@ -549,6 +549,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.0"
+  not_static_icons:
+    dependency: transitive
+    description:
+      name: not_static_icons
+      sha256: "153102cf0a11534c643d9cbbd0ba09ef82877b2bdb1e5e16b24612ddca5c3a81"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.54.0"
   objective_c:
     dependency: transitive
     description:

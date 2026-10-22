@@ -143,8 +143,8 @@ class _BlockListScreenState extends State<BlockListScreen>
         GlassCard(
           child: Row(
             children: [
-              const Icon(Icons.shield_outlined,
-                  color: Color(0xFF347A75), size: 34),
+              const LiveIcon(Icons.shield_outlined,
+                  color: Color(0xFF172B4D), size: 34),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -175,7 +175,7 @@ class _BlockListScreenState extends State<BlockListScreen>
               secondary: CircleAvatar(
                 backgroundColor:
                     on ? Colors.red.shade100 : Colors.grey.shade200,
-                child: Icon(
+                child: LiveIcon(
                   _iconForCategory(cat),
                   color: on ? Colors.red.shade800 : Colors.grey.shade600,
                 ),
@@ -220,7 +220,7 @@ class _BlockListScreenState extends State<BlockListScreen>
                         labelText: 'Specific domain to block',
                         hintText: 'e.g. reddit.com or badsite.org',
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.language),
+                        prefixIcon: LiveIcon(Icons.language),
                       ),
                       onSubmitted: (_) => _add(),
                     ),
@@ -228,7 +228,7 @@ class _BlockListScreenState extends State<BlockListScreen>
                   const SizedBox(width: 8),
                   FilledButton.icon(
                     onPressed: _add,
-                    icon: const Icon(Icons.add),
+                    icon: const LiveIcon(Icons.add),
                     label: const Text('Block'),
                   ),
                 ],
@@ -238,7 +238,7 @@ class _BlockListScreenState extends State<BlockListScreen>
                 TextField(
                   decoration: InputDecoration(
                     hintText: 'Search blocked domains...',
-                    prefixIcon: const Icon(Icons.search, size: 20),
+                    prefixIcon: const LiveIcon(Icons.search, size: 20),
                     contentPadding: const EdgeInsets.symmetric(vertical: 8),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -258,7 +258,7 @@ class _BlockListScreenState extends State<BlockListScreen>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.check_circle_outline,
+                      LiveIcon(Icons.check_circle_outline,
                           size: 48, color: Colors.grey.shade400),
                       const SizedBox(height: 12),
                       Text(
@@ -278,7 +278,7 @@ class _BlockListScreenState extends State<BlockListScreen>
                     return ListTile(
                       leading: const CircleAvatar(
                         backgroundColor: Color(0xFFFFEBEE),
-                        child: Icon(Icons.block, color: Colors.red),
+                        child: LiveIcon(Icons.block, color: Colors.red),
                       ),
                       title: Text(
                         e.domain,
@@ -290,8 +290,8 @@ class _BlockListScreenState extends State<BlockListScreen>
                       ),
                       trailing: IconButton(
                         tooltip: 'Unblock domain',
-                        icon:
-                            const Icon(Icons.delete_outline, color: Colors.red),
+                        icon: const LiveIcon(Icons.delete_outline,
+                            color: Colors.red),
                         onPressed: () => _remove(e),
                       ),
                     );

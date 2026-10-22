@@ -783,7 +783,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                 onPressed: () => Navigator.pop(context, option.$1),
                 child: Row(
                   children: [
-                    Icon(option.$3),
+                    LiveIcon(option.$3),
                     const SizedBox(width: 12),
                     Text(option.$2),
                   ],
@@ -1144,7 +1144,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
             labelText: 'One-time parent code',
             hintText: 'Enter the code your parent gave you',
             counterText: '',
-            prefixIcon: Icon(Icons.key_outlined),
+            prefixIcon: LiveIcon(Icons.key_outlined),
           ),
         ),
         actions: [
@@ -1285,7 +1285,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.family_restroom, size: 48),
+                  const LiveIcon(Icons.family_restroom, size: 48),
                   const SizedBox(height: 12),
                   Text(
                     'You’re not linked yet',
@@ -1302,7 +1302,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                   const SizedBox(height: 16),
                   FilledButton.icon(
                     onPressed: () => _auth.signOut(),
-                    icon: const Icon(Icons.logout),
+                    icon: const LiveIcon(Icons.logout),
                     label: const Text('Sign out'),
                   ),
                 ],
@@ -1349,7 +1349,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                     ),
                     IconButton(
                       onPressed: () => Navigator.pop(ctx),
-                      icon: const Icon(Icons.close),
+                      icon: const LiveIcon(Icons.close),
                     ),
                   ],
                 ),
@@ -1377,14 +1377,11 @@ class _ProtectionScreenState extends State<ProtectionScreen>
   }
 
   Widget _buildHomeHeader(BuildContext context) => GlassCard(
-        showShimmer: true,
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            GuardianCharacter(
-              size: 60,
-              mood: _vpnOn ? GuardianMood.safe : GuardianMood.alert,
-            ),
+            LiveIcon(_vpnOn ? Icons.shield_rounded : Icons.gpp_bad_rounded,
+                size: 60, color: _vpnOn ? AppPalette.blue : AppPalette.red),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -1407,15 +1404,14 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                       LivePulseBadge(
                         label: _vpnOn ? 'PROTECTED' : 'ATTENTION',
                         color: _vpnOn
-                            ? const Color(0xFF00C853)
-                            : const Color(0xFFFF1744),
+                            ? const Color(0xFF2563EB)
+                            : const Color(0xFFDC3545),
                       ),
                     ],
                   ),
                   const SizedBox(height: 3),
                   Text(_vpnOn
-                      ? _text(
-                          'Aegis is guarding your device. Have a great day!',
+                      ? _text('Protection is on. Your device is connected.',
                           'एजिस आपके डिवाइस की रक्षा कर रहा है। आपका दिन शुभ हो!')
                       : _text('Protection needs your parent’s attention.',
                           'सुरक्षा के लिए अपने माता-पिता से संपर्क करें।')),
@@ -1455,7 +1451,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
         if (_streak != null)
           Card(
             child: ListTile(
-              leading: const Icon(Icons.local_fire_department_outlined),
+              leading: const LiveIcon(Icons.local_fire_department_outlined),
               title: Text('${_streak!.currentStreak}-day task streak'),
               subtitle: Text('${_streak!.totalPoints} points earned so far'),
             ),
@@ -1504,7 +1500,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
             for (final task in entry.value)
               Card(
                 child: ListTile(
-                  leading: Icon(
+                  leading: LiveIcon(
                     task.taskType == 'homework'
                         ? Icons.menu_book_outlined
                         : Icons.task_alt_rounded,
@@ -1518,9 +1514,9 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                       ? IconButton.filledTonal(
                           tooltip: 'Send photo proof',
                           onPressed: () => _submitTaskProof(task),
-                          icon: const Icon(Icons.camera_alt_outlined),
+                          icon: const LiveIcon(Icons.camera_alt_outlined),
                         )
-                      : const Icon(Icons.check_circle_outline),
+                      : const LiveIcon(Icons.check_circle_outline),
                 ),
               ),
           ],
@@ -1544,7 +1540,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
           IconButton(
             tooltip: _text('Refresh', 'रीफ़्रेश'),
             onPressed: _loading ? null : _syncRules,
-            icon: const Icon(Icons.refresh),
+            icon: const LiveIcon(Icons.refresh),
           ),
           PopupMenuButton<String>(
             tooltip: _text('Language', 'भाषा'),
@@ -1554,7 +1550,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
               PopupMenuItem(value: 'en', child: Text('English')),
               PopupMenuItem(value: 'hi', child: Text('हिन्दी')),
             ],
-            icon: const Icon(Icons.language),
+            icon: const LiveIcon(Icons.language),
           ),
           IconButton(
             tooltip: widget.themeMode == ThemeMode.dark
@@ -1567,7 +1563,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                           ? ThemeMode.light
                           : ThemeMode.dark,
                     ),
-            icon: Icon(widget.themeMode == ThemeMode.dark
+            icon: LiveIcon(widget.themeMode == ThemeMode.dark
                 ? Icons.light_mode_outlined
                 : Icons.dark_mode_outlined),
           ),
@@ -1579,23 +1575,23 @@ class _ProtectionScreenState extends State<ProtectionScreen>
             setState(() => _selectedSection = index),
         destinations: [
           NavigationDestination(
-            icon: const Icon(Icons.home_outlined),
-            selectedIcon: const Icon(Icons.home_rounded),
+            icon: const LiveIcon(Icons.home_outlined),
+            selectedIcon: const LiveIcon(Icons.home_rounded),
             label: _text('Home', 'होम'),
           ),
           NavigationDestination(
-            icon: const Icon(Icons.assignment_outlined),
-            selectedIcon: const Icon(Icons.assignment_rounded),
+            icon: const LiveIcon(Icons.assignment_outlined),
+            selectedIcon: const LiveIcon(Icons.assignment_rounded),
             label: _text('My tasks', 'मेरे काम'),
           ),
           NavigationDestination(
-            icon: const Icon(Icons.shield_outlined),
-            selectedIcon: const Icon(Icons.shield_rounded),
+            icon: const LiveIcon(Icons.shield_outlined),
+            selectedIcon: const LiveIcon(Icons.shield_rounded),
             label: _text('Focus', 'फ़ोकस'),
           ),
           NavigationDestination(
-            icon: const Icon(Icons.person_outline),
-            selectedIcon: const Icon(Icons.person_rounded),
+            icon: const LiveIcon(Icons.person_outline),
+            selectedIcon: const LiveIcon(Icons.person_rounded),
             label: _text('Profile', 'प्रोफ़ाइल'),
           ),
         ],
@@ -1609,7 +1605,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.error_outline,
+                        const LiveIcon(Icons.error_outline,
                             size: 48, color: Colors.red),
                         const SizedBox(height: 12),
                         Text(_error!, textAlign: TextAlign.center),
@@ -1631,16 +1627,16 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                             if (_status != null)
                               Card(
                                 child: ListTile(
-                                  leading: const Icon(
+                                  leading: const LiveIcon(
                                     Icons.info_outline,
-                                    color: Color(0xFF286F69),
+                                    color: Color(0xFF172B4D),
                                   ),
                                   title: Text(_status!),
                                   trailing: IconButton(
                                     tooltip: 'Dismiss',
                                     onPressed: () =>
                                         setState(() => _status = null),
-                                    icon: const Icon(Icons.close),
+                                    icon: const LiveIcon(Icons.close),
                                   ),
                                 ),
                               ),
@@ -1650,7 +1646,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                               if (_familyModel == null)
                                 Card(
                                   child: ListTile(
-                                    leading: const Icon(Icons.link_off),
+                                    leading: const LiveIcon(Icons.link_off),
                                     title: Text(_text(
                                       'Your account is not linked yet',
                                       'आपका खाता अभी लिंक नहीं है',
@@ -1666,22 +1662,14 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    DualUsageChart(
-                                      logs: _activityLogs,
-                                      title: _text(
-                                        'My Screen Time Analytics',
-                                        'मेरी स्क्रीन समय विश्लेषण',
-                                      ),
-                                    ),
-                                    const SizedBox(height: 10),
                                     Center(
                                       child: TextButton.icon(
                                         onPressed: _openActivityLogs,
-                                        icon: const Icon(Icons.list_alt_rounded,
+                                        icon: const LiveIcon(
+                                            Icons.list_alt_rounded,
                                             size: 18),
                                         label: Text(
-                                          _text(
-                                              'View Categorized Logs (Live & Usage)',
+                                          _text('View activity and usage graph',
                                               'विस्तृत लॉग देखें (लाइव और उपयोग)'),
                                           style: const TextStyle(
                                               fontWeight: FontWeight.w700),
@@ -1696,8 +1684,8 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                             if (_selectedSection == 0) ...[
                               GlassCard(
                                 child: SwitchListTile(
-                                  secondary:
-                                      const Icon(Icons.location_on_outlined),
+                                  secondary: const LiveIcon(
+                                      Icons.location_on_outlined),
                                   title: const Text('Share my location'),
                                   subtitle: Text(
                                     _locationSharing
@@ -1713,7 +1701,8 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                               if (_zones.isNotEmpty)
                                 Card(
                                   child: ListTile(
-                                    leading: const Icon(Icons.place_outlined),
+                                    leading:
+                                        const LiveIcon(Icons.place_outlined),
                                     title: Text(
                                       _activeZoneIds.isEmpty
                                           ? 'No active family zone'
@@ -1737,7 +1726,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                                             .colorScheme
                                             .primary
                                             .withValues(alpha: .12),
-                                        child: Icon(
+                                        child: LiveIcon(
                                           Icons.person_rounded,
                                           color: Theme.of(context)
                                               .colorScheme
@@ -1782,7 +1771,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                                 child: Column(
                                   children: [
                                     ListTile(
-                                      leading: Icon(
+                                      leading: LiveIcon(
                                         _usageOk
                                             ? Icons.check_circle_outline
                                             : Icons.info_outline,
@@ -1807,7 +1796,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                                     ),
                                     const Divider(height: 1),
                                     ListTile(
-                                      leading: Icon(
+                                      leading: LiveIcon(
                                         _a11yOk
                                             ? Icons.check_circle_outline
                                             : Icons.info_outline,
@@ -1835,7 +1824,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                               ),
                               Card(
                                 child: ListTile(
-                                  leading: const Icon(Icons.logout),
+                                  leading: const LiveIcon(Icons.logout),
                                   title: const Text('Sign out'),
                                   subtitle: const Text(
                                     'Your parent can help if you need to sign back in.',
@@ -1854,12 +1843,12 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                                     children: [
                                       Row(
                                         children: [
-                                          Icon(
+                                          LiveIcon(
                                             _vpnOn
                                                 ? Icons.shield
                                                 : Icons.shield_outlined,
                                             color: _vpnOn
-                                                ? Colors.green.shade800
+                                                ? Colors.blue.shade800
                                                 : Colors.grey.shade600,
                                           ),
                                           const SizedBox(width: 10),
@@ -1934,7 +1923,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                                             )
                                                 ? null
                                                 : _requestProtectionPause,
-                                            icon: const Icon(Icons.send),
+                                            icon: const LiveIcon(Icons.send),
                                             label: const Text('Request pause'),
                                           ),
                                         ),
@@ -1949,15 +1938,15 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                                 child: ListTile(
                                   leading: CircleAvatar(
                                     backgroundColor: _usageOk
-                                        ? Colors.green.shade100
-                                        : Colors.orange.shade100,
-                                    child: Icon(
+                                        ? Colors.blue.shade100
+                                        : Colors.blue.shade100,
+                                    child: LiveIcon(
                                       _usageOk
                                           ? Icons.check
                                           : Icons.warning_amber,
                                       color: _usageOk
-                                          ? Colors.green.shade800
-                                          : Colors.orange.shade800,
+                                          ? Colors.blue.shade800
+                                          : Colors.blue.shade800,
                                     ),
                                   ),
                                   title: const Text(
@@ -1971,8 +1960,8 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                                         : 'Required for accurate usage tracking and enforcing daily app limits. Android may require Allow restricted settings first.',
                                   ),
                                   trailing: _usageOk
-                                      ? const Icon(Icons.check_circle,
-                                          color: Colors.green)
+                                      ? const LiveIcon(Icons.check_circle,
+                                          color: Colors.blue)
                                       : FilledButton.tonal(
                                           onPressed: () => _showPermissionHelp(
                                             permissionName: 'Usage access',
@@ -1989,15 +1978,15 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                                 child: ListTile(
                                   leading: CircleAvatar(
                                     backgroundColor: _a11yOk
-                                        ? Colors.green.shade100
-                                        : Colors.orange.shade100,
-                                    child: Icon(
+                                        ? Colors.blue.shade100
+                                        : Colors.blue.shade100,
+                                    child: LiveIcon(
                                       _a11yOk
                                           ? Icons.check
                                           : Icons.warning_amber,
                                       color: _a11yOk
-                                          ? Colors.green.shade800
-                                          : Colors.orange.shade800,
+                                          ? Colors.blue.shade800
+                                          : Colors.blue.shade800,
                                     ),
                                   ),
                                   title: const Text(
@@ -2011,8 +2000,8 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                                         : 'Required to block apps and enforce their daily limits.',
                                   ),
                                   trailing: _a11yOk
-                                      ? const Icon(Icons.check_circle,
-                                          color: Colors.green)
+                                      ? const LiveIcon(Icons.check_circle,
+                                          color: Colors.blue)
                                       : FilledButton.tonal(
                                           onPressed: () => _showPermissionHelp(
                                             permissionName: 'Accessibility',
@@ -2027,7 +2016,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                                   (_timeLimits.isNotEmpty ||
                                       _blockedApps.isNotEmpty))
                                 Card(
-                                  color: Colors.orange.shade50,
+                                  color: Colors.blue.shade50,
                                   child: Padding(
                                     padding: const EdgeInsets.all(12),
                                     child: Text(
@@ -2035,7 +2024,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                                           ? 'App blocking and daily limits are not enforced until the App Blocker Accessibility service is enabled.'
                                           : 'Daily app limits are not enforced until Usage access is enabled.',
                                       style: TextStyle(
-                                          color: Colors.orange.shade900),
+                                          color: Colors.blue.shade900),
                                     ),
                                   ),
                                 ),
@@ -2108,7 +2097,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                                 const SizedBox(height: 12),
                                 Card(
                                   child: ListTile(
-                                    leading: const Icon(Icons.redeem),
+                                    leading: const LiveIcon(Icons.redeem),
                                     title: const Text('Task streak rewards'),
                                     subtitle: Text(
                                       '${_streak!.bonusTimeMinutes} bonus minutes available for extra-time requests · ${_streak!.appUnlockCredits} temporary app unlock${_streak!.appUnlockCredits == 1 ? '' : 's'}',
@@ -2134,7 +2123,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                                                     .toList(),
                                             child: const Padding(
                                               padding: EdgeInsets.all(8),
-                                              child: Icon(Icons.lock_open),
+                                              child: LiveIcon(Icons.lock_open),
                                             ),
                                           )
                                         : null,
@@ -2150,7 +2139,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                                 const SizedBox(height: 8),
                                 Card(
                                   child: ListTile(
-                                    leading: const Icon(Icons.mood),
+                                    leading: const LiveIcon(Icons.mood),
                                     title: const Text('A quick check-in'),
                                     subtitle: const Text(
                                       'How have you been feeling this week?',

@@ -35,10 +35,10 @@ void main() {
     expect(find.text('Activity by app'), findsOneWidget);
     expect(find.text('Video app'), findsOneWidget);
     await tester.tap(find.text('Hourly').first);
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 350));
     expect(find.text('Hourly Usage (Point Graph)'), findsOneWidget);
     await tester.tap(find.text('Video app'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 350));
     expect(find.textContaining('Session · 45m'), findsOneWidget);
   });
 }

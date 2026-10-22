@@ -67,7 +67,7 @@ class _ChildAuthScreenState extends State<ChildAuthScreen> {
                   padding: const EdgeInsets.all(18),
                   child: Row(
                     children: [
-                      Icon(
+                      LiveIcon(
                         Icons.shield_rounded,
                         size: 38,
                         color: Theme.of(context).colorScheme.primary,
@@ -98,7 +98,7 @@ class _ChildAuthScreenState extends State<ChildAuthScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Email address',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.email),
+                  prefixIcon: LiveIcon(Icons.email),
                 ),
               ),
               const SizedBox(height: 12),
@@ -109,7 +109,7 @@ class _ChildAuthScreenState extends State<ChildAuthScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Password',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.lock),
+                  prefixIcon: LiveIcon(Icons.lock),
                 ),
                 onSubmitted: (_) => _loading ? null : _signIn(),
               ),

@@ -30,15 +30,15 @@ class LiveAlertBanner extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2B1A1E) : const Color(0xFFFFF1F2),
+        color: isDark ? const Color(0xFF172B4D) : const Color(0xFFFFF1F2),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFFE53935).withValues(alpha: 0.4),
+          color: const Color(0xFFDC3545).withValues(alpha: 0.4),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFE53935).withValues(alpha: 0.22),
+            color: const Color(0xFFDC3545).withValues(alpha: 0.22),
             blurRadius: 18,
             offset: const Offset(0, 6),
           ),
@@ -59,7 +59,6 @@ class LiveAlertBanner extends StatelessWidget {
               // Moving red triangle alert with live animation
               const AnimatedAlertTriangle(
                 size: 38,
-                showPulseRings: true,
               ),
               const SizedBox(width: 8),
 
@@ -76,7 +75,9 @@ class LiveAlertBanner extends StatelessWidget {
                             title,
                             style: theme.textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.w800,
-                              color: isDark ? const Color(0xFFFF8A80) : const Color(0xFFC62828),
+                              color: isDark
+                                  ? const Color(0xFFDC3545)
+                                  : const Color(0xFFDC3545),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -85,16 +86,18 @@ class LiveAlertBanner extends StatelessWidget {
                         if (childName != null && childName!.isNotEmpty) ...[
                           const SizedBox(width: 6),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFE53935).withValues(alpha: 0.15),
+                              color: const Color(0xFFDC3545)
+                                  .withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               childName!,
                               style: theme.textTheme.labelSmall?.copyWith(
                                 fontWeight: FontWeight.bold,
-                                color: const Color(0xFFD32F2F),
+                                color: const Color(0xFFDC3545),
                               ),
                             ),
                           ),
@@ -105,7 +108,8 @@ class LiveAlertBanner extends StatelessWidget {
                     Text(
                       message,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: isDark ? Colors.white70 : const Color(0xFF4A1E22),
+                        color:
+                            isDark ? Colors.white70 : const Color(0xFF172B4D),
                         fontWeight: FontWeight.w500,
                       ),
                       maxLines: 2,
@@ -123,13 +127,17 @@ class LiveAlertBanner extends StatelessWidget {
                     FilledButton.tonal(
                       style: FilledButton.styleFrom(
                         visualDensity: VisualDensity.compact,
-                        backgroundColor: const Color(0xFFE53935),
+                        backgroundColor: const Color(0xFFDC3545),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 0),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                       onPressed: onView,
-                      child: const Text('Review', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      child: const Text('Review',
+                          style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
                   if (onDismiss != null)
                     GestureDetector(

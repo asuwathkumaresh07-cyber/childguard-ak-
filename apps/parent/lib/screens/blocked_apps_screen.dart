@@ -111,12 +111,12 @@ class _BlockedAppsScreenState extends State<BlockedAppsScreen> {
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFB85E62).withValues(alpha: .12),
+                          color: const Color(0xFFDC3545).withValues(alpha: .12),
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: const Icon(
+                        child: const LiveIcon(
                           Icons.shield_outlined,
-                          color: Color(0xFFAD555A),
+                          color: Color(0xFFDC3545),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -192,7 +192,7 @@ class _BlockedAppsScreenState extends State<BlockedAppsScreen> {
                       title:
                           Text(e.appLabel.isEmpty ? e.packageName : e.appLabel),
                       trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline),
+                        icon: const LiveIcon(Icons.delete_outline),
                         onPressed: () => _remove(e),
                       ),
                     ),

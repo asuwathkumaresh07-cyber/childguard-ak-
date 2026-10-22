@@ -16,12 +16,14 @@ class ChildPlansScreen extends StatefulWidget {
     required this.childId,
     required this.childName,
     this.showOther = false,
+    this.extraSections = const [],
   });
 
   final String familyId;
   final String childId;
   final String childName;
   final bool showOther;
+  final List<Widget> extraSections;
 
   @override
   State<ChildPlansScreen> createState() => _ChildPlansScreenState();
@@ -318,7 +320,7 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
                           longitude.text =
                               location.longitude.toStringAsFixed(6);
                         }),
-                        icon: const Icon(Icons.my_location, size: 18),
+                        icon: const LiveIcon(Icons.my_location, size: 18),
                         label: const Text("Use child's latest location"),
                       ),
                     ),
@@ -655,12 +657,12 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
           if (_error != null)
             Card(
               child: ListTile(
-                leading: const Icon(Icons.info_outline),
+                leading: const LiveIcon(Icons.info_outline),
                 title: Text(_error!),
                 trailing: IconButton(
                   tooltip: 'Retry',
                   onPressed: _load,
-                  icon: const Icon(Icons.refresh),
+                  icon: const LiveIcon(Icons.refresh),
                 ),
               ),
             ),
@@ -670,7 +672,7 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
               trailing: IconButton(
                 tooltip: 'Refresh',
                 onPressed: _load,
-                icon: const Icon(Icons.refresh),
+                icon: const LiveIcon(Icons.refresh),
               ),
             ),
             GlassCard(
@@ -680,7 +682,7 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.radar, color: Color(0xFF347A75)),
+                      const LiveIcon(Icons.radar, color: Color(0xFF172B4D)),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -707,14 +709,14 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      Icon(
+                      LiveIcon(
                         _activeZone == null
                             ? Icons.near_me_outlined
                             : Icons.location_on,
                         size: 18,
                         color: _activeZone == null
-                            ? const Color(0xFF628187)
-                            : const Color(0xFF2D806D),
+                            ? const Color(0xFF172B4D)
+                            : const Color(0xFF172B4D),
                       ),
                       const SizedBox(width: 6),
                       Expanded(
@@ -752,12 +754,12 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
                       OutlinedButton.icon(
                         onPressed:
                             _location == null ? null : _openLocationInMaps,
-                        icon: const Icon(Icons.map_outlined),
+                        icon: const LiveIcon(Icons.map_outlined),
                         label: const Text('View location'),
                       ),
                       OutlinedButton.icon(
                         onPressed: _createZone,
-                        icon: const Icon(Icons.add_location_alt),
+                        icon: const LiveIcon(Icons.add_location_alt),
                         label: const Text('Add known place'),
                       ),
                     ],
@@ -781,7 +783,7 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
                     trailing: IconButton(
                       tooltip: 'Delete zone',
                       onPressed: () => _removeZone(zone),
-                      icon: const Icon(Icons.delete_outline),
+                      icon: const LiveIcon(Icons.delete_outline),
                     ),
                     children: [
                       ...rules.map(
@@ -795,13 +797,13 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
                           subtitle: Text(rule.packageName),
                           trailing: IconButton(
                             onPressed: () => _removeRule(rule),
-                            icon: const Icon(Icons.remove_circle_outline),
+                            icon: const LiveIcon(Icons.remove_circle_outline),
                           ),
                         ),
                       ),
                       TextButton.icon(
                         onPressed: () => _addZoneRule(zone),
-                        icon: const Icon(Icons.add),
+                        icon: const LiveIcon(Icons.add),
                         label: const Text('Restrict an app in this zone'),
                       ),
                     ],
@@ -815,7 +817,7 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
                 final zoneName = zone.isEmpty ? 'Zone' : zone.first.name;
                 return ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: Icon(
+                  leading: LiveIcon(
                     event.eventType == 'off_task_app'
                         ? Icons.warning_amber
                         : Icons.place,
@@ -833,7 +835,7 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
                       ? IconButton(
                           tooltip: 'Restrict this app in this zone',
                           onPressed: () => _addZoneRule(zone.first),
-                          icon: const Icon(Icons.block),
+                          icon: const LiveIcon(Icons.block),
                         )
                       : null,
                 );
@@ -841,10 +843,11 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
             ],
           ],
           if (widget.showOther) ...[
+            ...widget.extraSections,
             if (_streak != null)
               Card(
                 child: ListTile(
-                  leading: const Icon(Icons.local_fire_department),
+                  leading: const LiveIcon(Icons.local_fire_department),
                   title: Text(
                     '${_streak!.currentStreak} approved-task streak · ${_streak!.totalPoints} points',
                   ),
@@ -857,7 +860,7 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
               ),
             Card(
               child: ListTile(
-                leading: const Icon(Icons.tune),
+                leading: const LiveIcon(Icons.tune),
                 title: Text(
                   _autonomy?.enabled == true
                       ? 'Automatic extra time is enabled'
@@ -871,7 +874,7 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
                 trailing: IconButton(
                   tooltip: 'Configure trust-based autonomy',
                   onPressed: _configureAutonomy,
-                  icon: const Icon(Icons.settings),
+                  icon: const LiveIcon(Icons.settings),
                 ),
               ),
             ),
@@ -882,7 +885,7 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
               ..._moods.take(10).map(
                     (mood) => ListTile(
                       contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.mood),
+                      leading: const LiveIcon(Icons.mood),
                       title: Text(mood.mood),
                       subtitle: Text(
                         '${DateFormat('MMM d, h:mm a').format(mood.createdAt.toLocal())}'
