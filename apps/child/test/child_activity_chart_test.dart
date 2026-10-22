@@ -5,8 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared/shared.dart';
 
 void main() {
-  testWidgets('shows hourly usage and expandable per-app sessions',
-      (tester) async {
+  testWidgets('switches graph mode and shows per-app sessions', (tester) async {
     await initializeDateFormatting();
     final now = DateTime.now();
     final start = DateTime(now.year, now.month, now.day, 9);
@@ -31,9 +30,13 @@ void main() {
       ),
     );
 
-    expect(find.text('Hourly usage today'), findsOneWidget);
+    expect(find.text('Daily'), findsOneWidget);
+    expect(find.text('Hourly'), findsOneWidget);
     expect(find.text('Activity by app'), findsOneWidget);
     expect(find.text('Video app'), findsOneWidget);
+    await tester.tap(find.text('Hourly').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Hourly Usage (Point Graph)'), findsOneWidget);
     await tester.tap(find.text('Video app'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Session · 45m'), findsOneWidget);

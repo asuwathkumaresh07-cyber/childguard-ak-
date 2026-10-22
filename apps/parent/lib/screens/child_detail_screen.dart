@@ -39,6 +39,11 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
   List<ExtraTimeRequest> _extraTimeRequests = [];
   List<VpnControlRequest> _vpnRequests = [];
   List<ChildTamperEvent> _tamperEvents = [];
+  List<String> _childBlockedCategories = [];
+  Set<String> _familyCategories = {};
+  Set<String> _familyApps = {};
+  bool _savingCategories = false;
+  Map<String, String> _appCategories = {};
   ChildDeviceStatus? _deviceStatus;
   String _protectionMode = 'strict';
   Set<String> _currentlyBlockedDomains = {};
@@ -138,9 +143,25 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
               childId: widget.childId,
             )
           : <ChildTamperEvent>[];
-      final customBlocks = await _family.fetchBlockDomains(widget.familyId);
-      final blockedApps =
-          await _family.fetchBlockedAppPackages(widget.familyId);
+      final customBlocks = await _family.fetchChildBlockDomains(
+        familyId: widget.familyId,
+        childId: widget.childId,
+      );
+      final blockedApps = await _family.fetchChildBlockedAppPackages(
+        familyId: widget.familyId,
+        childId: widget.childId,
+      );
+      final familyCategories =
+          await _family.fetchBlockedCategories(widget.familyId);
+      final familyApps = await _family.fetchBlockedAppPackages(widget.familyId);
+      final childBlockedCategories = await _family.fetchChildBlockedCategories(
+        familyId: widget.familyId,
+        childId: widget.childId,
+      );
+      final appCategories = await _family.fetchAppCategoriesForChild(
+        familyId: widget.familyId,
+        childId: widget.childId,
+      );
 
       if (!mounted) return;
       final knownPendingIds = {
@@ -161,6 +182,10 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
         _vpnRequests = vpnRequests;
         _deviceStatus = deviceStatus;
         _tamperEvents = tamperEvents;
+        _childBlockedCategories = childBlockedCategories;
+        _familyCategories = familyCategories.toSet();
+        _familyApps = familyApps.toSet();
+        _appCategories = appCategories;
         _protectionMode = protectionMode;
         _currentlyBlockedDomains =
             customBlocks.map((d) => d.toLowerCase()).toSet();
@@ -199,6 +224,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
         _tamperEvents.insert(0, event);
       }
     });
+    unawaited(_load(silent: true));
     showLiveAlertBanner(
       context: context,
       title: 'Security Alert Triggered',
@@ -228,11 +254,15 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
   Future<void> _blockDomain(String rawDomain) async {
     final domain = rawDomain.trim().toLowerCase();
     try {
-      await _family.addBlockDomain(widget.familyId, domain);
+      await _family.addChildBlockedDomain(
+        familyId: widget.familyId,
+        childId: widget.childId,
+        domain: domain,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Blocked $domain across child devices'),
+            content: Text('Blocked $domain for ${widget.childName}'),
             backgroundColor: Colors.red.shade700,
           ),
         );
@@ -245,26 +275,22 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
 
   Future<void> _unblockDomain(String domain) async {
     try {
-      final entries = await _family.fetchBlockList(widget.familyId);
-      final match = entries
-          .where((e) => e.domain.toLowerCase() == domain.toLowerCase())
-          .firstOrNull;
-
-      if (match != null && match.id.isNotEmpty) {
-        await _family.removeBlockDomain(match.id);
+      final familyDomains = await _family.fetchBlockDomains(widget.familyId);
+      if (familyDomains.contains(domain.toLowerCase())) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Unblocked $domain')),
+            SnackBar(content: Text('$domain is blocked by a family-wide rule')),
           );
         }
-        await _load(silent: true);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$domain is managed by a blocked category')),
-          );
-        }
+        return;
       }
+      await _family.removeChildBlockedDomain(
+        familyId: widget.familyId,
+        childId: widget.childId,
+        domain: domain,
+      );
+      if (mounted) _showMessage('Unblocked $domain for ${widget.childName}.');
+      await _load(silent: true);
     } catch (e) {
       if (mounted) showAppError(context, 'unblock website', e);
     }
@@ -272,8 +298,9 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
 
   Future<void> _blockApp(String packageName, String label) async {
     try {
-      await _family.addBlockedApp(
+      await _family.addChildBlockedApp(
         familyId: widget.familyId,
+        childId: widget.childId,
         packageName: packageName,
         appLabel: label,
       );
@@ -288,6 +315,57 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
       await _load(silent: true);
     } catch (e) {
       if (mounted) showAppError(context, 'block app', e);
+    }
+  }
+
+  Future<void> _addCustomBlock({required bool app}) async {
+    final controller = TextEditingController();
+    try {
+      final value = await showDialog<String>(
+          context: context,
+          builder: (context) => AlertDialog(
+                title: Text(
+                    'Block ${app ? "app" : "website"} for ${widget.childName}'),
+                content: TextField(
+                    controller: controller,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                        labelText:
+                            app ? 'Android package name' : 'Website domain',
+                        hintText: app ? 'com.example.app' : 'example.com')),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel')),
+                  FilledButton(
+                      onPressed: () {
+                        if (controller.text.trim().isNotEmpty) {
+                          Navigator.pop(context, controller.text.trim());
+                        }
+                      },
+                      child: const Text('Block'))
+                ],
+              ));
+      if (value == null) return;
+      if (app) {
+        await _blockApp(value, value);
+      } else {
+        await _blockDomain(value);
+      }
+    } finally {
+      controller.dispose();
+    }
+  }
+
+  Future<void> _unblockApp(String package) async {
+    try {
+      await _family.removeChildBlockedApp(
+          familyId: widget.familyId,
+          childId: widget.childId,
+          packageName: package);
+      await _load(silent: true);
+    } catch (error) {
+      if (mounted) showAppError(context, 'unblock app', error);
     }
   }
 
@@ -335,11 +413,11 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
           isScrollable: true,
           tabAlignment: TabAlignment.start,
           tabs: const [
-            Tab(icon: Icon(Icons.bar_chart_rounded), text: 'Usage & Graphs'),
             Tab(icon: Icon(Icons.history_rounded), text: 'Categorized Logs'),
             Tab(icon: Icon(Icons.public), text: 'Web Shield'),
             Tab(icon: Icon(Icons.apps), text: 'Apps & Limits'),
             Tab(icon: Icon(Icons.radar), text: 'Location & Zones'),
+            Tab(icon: Icon(Icons.more_horiz), text: 'Other'),
           ],
         ),
       ),
@@ -364,7 +442,6 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                     child: TabBarView(
                       controller: _tabs,
                       children: [
-                        _buildUsageAndGraphsTab(),
                         _buildCategorizedLogsTab(),
                         _buildNetworkTab(),
                         _buildControlsTab(),
@@ -372,6 +449,12 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                           familyId: widget.familyId,
                           childId: widget.childId,
                           childName: widget.childName,
+                        ),
+                        ChildPlansScreen(
+                          familyId: widget.familyId,
+                          childId: widget.childId,
+                          childName: widget.childName,
+                          showOther: true,
                         ),
                       ],
                     ),
@@ -387,6 +470,12 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
 
     return Column(
       children: [
+        Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+                onPressed: () => _addCustomBlock(app: false),
+                icon: const Icon(Icons.add),
+                label: const Text('Block website'))),
         // Filter chips and search bar
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -555,110 +644,17 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
     );
   }
 
-  Widget _buildUsageAndGraphsTab() {
-    return RefreshIndicator(
-      onRefresh: () => _load(),
-      child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 24),
-        itemCount: _apps.length + 1,
-        separatorBuilder: (_, __) => const SizedBox(height: 6),
-        itemBuilder: (context, i) {
-          if (i == 0) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                GlassCard(
-                  child: DualUsageChart(
-                    logs: _apps,
-                    title: '${widget.childName}’s Usage Analytics',
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Text(
-                    'Recorded App Sessions (${_apps.length})',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                if (_apps.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
-                    child: Center(
-                      child: Text('No app sessions recorded yet for today.'),
-                    ),
-                  ),
-              ],
-            );
-          }
-
-          final a = _apps[i - 1];
-          final isBlocked = _currentlyBlockedApps.contains(a.packageName);
-          final dur = _formatDuration(a.durationSeconds);
-          final appName = a.appLabel.isEmpty ? a.packageName : a.appLabel;
-
-          return ListTile(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            tileColor: Colors.white.withValues(alpha: .75),
-            leading: CircleAvatar(
-              backgroundColor:
-                  isBlocked ? Colors.red.shade100 : Colors.blue.shade100,
-              child: Icon(
-                isBlocked ? Icons.block : Icons.smartphone,
-                color: isBlocked ? Colors.red.shade800 : Colors.blue.shade800,
-              ),
-            ),
-            title: Text(
-              appName,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-            subtitle: Text(_fmt.format(a.startedAt.toLocal())),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (dur.isNotEmpty) ...[
-                  Text(dur,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(width: 8),
-                ],
-                if (!isBlocked)
-                  FilledButton.tonal(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.red.shade100,
-                      foregroundColor: Colors.red.shade900,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    onPressed: () => _blockApp(a.packageName, appName),
-                    child: const Text(
-                      'Block',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  )
-                else
-                  const Chip(
-                    label: Text('Blocked', style: TextStyle(fontSize: 11)),
-                    backgroundColor: Color(0xFFFFCDD2),
-                  ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   Widget _buildCategorizedLogsTab() {
     return CategorizedLogsView(
       appLogs: _apps,
       domainLogs: _domains,
       tamperEvents: _tamperEvents,
       childName: widget.childName,
+      deviceStatus: _deviceStatus,
       onBlockDomain: _blockDomain,
       onBlockApp: _blockApp,
-      isDomainBlocked: (d) => _currentlyBlockedDomains.contains(d.toLowerCase()),
+      isDomainBlocked: (d) =>
+          _currentlyBlockedDomains.contains(d.toLowerCase()),
       isAppBlocked: (p) => _currentlyBlockedApps.contains(p),
     );
   }
@@ -898,16 +894,6 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
     _showMessage(userFacingError);
   }
 
-  String _formatDuration(int? seconds) {
-    if (seconds == null || seconds <= 0) return '';
-    final duration = Duration(seconds: seconds);
-    if (duration.inHours > 0) {
-      return '${duration.inHours}h ${duration.inMinutes.remainder(60)}m';
-    }
-    if (duration.inMinutes > 0) return '${duration.inMinutes}m';
-    return '<1m';
-  }
-
   Widget _buildProtectionStatusBanner() {
     final vpnEnabled = _deviceStatus?.vpnEnabled;
     final action = vpnEnabled == true ? 'disable' : 'enable';
@@ -925,7 +911,8 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
           children: [
             GuardianCharacter(
               size: 48,
-              mood: vpnEnabled == false ? GuardianMood.alert : GuardianMood.safe,
+              mood:
+                  vpnEnabled == false ? GuardianMood.alert : GuardianMood.safe,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -935,7 +922,9 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                   Row(
                     children: [
                       Icon(
-                        vpnEnabled == true ? Icons.shield : Icons.shield_outlined,
+                        vpnEnabled == true
+                            ? Icons.shield
+                            : Icons.shield_outlined,
                         size: 16,
                         color: vpnEnabled == true
                             ? const Color(0xFF2D806D)
@@ -944,7 +933,8 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                       const SizedBox(width: 4),
                       Text(
                         statusText,
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 13),
                       ),
                     ],
                   ),
@@ -953,7 +943,9 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                     '${widget.childName} · ${_protectionMode.toUpperCase()} mode',
                     style: TextStyle(
                       fontSize: 11,
-                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white60 : Colors.black54,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white60
+                          : Colors.black54,
                     ),
                   ),
                 ],
@@ -968,21 +960,8 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                   ),
                   onPressed: () => _generateProtectionCode(action),
-                  child: Text(vpnEnabled == true ? 'Turn OFF' : 'Turn ON', style: const TextStyle(fontSize: 11)),
-                ),
-                IconButton(
-                  tooltip: 'Simulate Live Alert',
-                  visualDensity: VisualDensity.compact,
-                  onPressed: () {
-                    showLiveAlertBanner(
-                      context: context,
-                      title: 'Live Security Alert',
-                      message: '${widget.childName}: Protection VPN turned off unexpectedly!',
-                      childName: widget.childName,
-                      onView: () => _tabs.animateTo(1),
-                    );
-                  },
-                  icon: const Icon(Icons.bolt, size: 20, color: Colors.amber),
+                  child: Text(vpnEnabled == true ? 'Turn OFF' : 'Turn ON',
+                      style: const TextStyle(fontSize: 11)),
                 ),
               ],
             ),
@@ -1014,34 +993,34 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
             children: [
               const Text(
                 'Protection mode',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _protectionMode == 'strict'
-                      ? 'Strict: no child pause requests. Every VPN change still requires a new parent code.'
-                      : 'Friendly: the child may request a pause. After approval, send a new parent code to apply it.',
-                ),
-                const SizedBox(height: 8),
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(
-                      value: 'strict',
-                      label: Text('Strict'),
-                      icon: Icon(Icons.lock),
-                    ),
-                    ButtonSegment(
-                      value: 'friendly',
-                      label: Text('Friendly'),
-                      icon: Icon(Icons.favorite_outline),
-                    ),
-                  ],
-                  selected: {_protectionMode},
-                  onSelectionChanged: (selection) =>
-                      _setProtectionMode(selection.first),
-                ),
-              ],
-            ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _protectionMode == 'strict'
+                    ? 'Strict: no child pause requests. Every VPN change still requires a new parent code.'
+                    : 'Friendly: the child may request a pause. After approval, send a new parent code to apply it.',
+              ),
+              const SizedBox(height: 8),
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(
+                    value: 'strict',
+                    label: Text('Strict'),
+                    icon: Icon(Icons.lock),
+                  ),
+                  ButtonSegment(
+                    value: 'friendly',
+                    label: Text('Friendly'),
+                    icon: Icon(Icons.favorite_outline),
+                  ),
+                ],
+                selected: {_protectionMode},
+                onSelectionChanged: (selection) =>
+                    _setProtectionMode(selection.first),
+              ),
+            ],
+          ),
         ),
         if (_protectionMode == 'friendly') ...[
           const SizedBox(height: 12),
@@ -1093,31 +1072,31 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
             children: [
               const Text(
                 'Protection controls',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Generate a new one-use code for each VPN change. The child enters it in the Child app. Codes expire after 10 minutes.',
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    FilledButton.icon(
-                      onPressed: () => _generateProtectionCode('enable'),
-                      icon: const Icon(Icons.shield),
-                      label: const Text('Code to turn ON'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: () => _generateProtectionCode('disable'),
-                      icon: const Icon(Icons.shield_outlined),
-                      label: const Text('Code to turn OFF'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Generate a new one-use code for each VPN change. The child enters it in the Child app. Codes expire after 10 minutes.',
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  FilledButton.icon(
+                    onPressed: () => _generateProtectionCode('enable'),
+                    icon: const Icon(Icons.shield),
+                    label: const Text('Code to turn ON'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => _generateProtectionCode('disable'),
+                    icon: const Icon(Icons.shield_outlined),
+                    label: const Text('Code to turn OFF'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 16),
         GlassCard(
@@ -1126,55 +1105,55 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
             children: [
               const Text(
                 'Child device protection status',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                if (_deviceStatus == null)
-                  const Text(
-                    'Waiting for the Child app to report its protection status.',
-                  )
-                else ...[
-                  Text(
-                    'Last connected ${DateFormat('MMM d, h:mm a').format(_deviceStatus!.lastSeenAt.toLocal())}',
-                  ),
-                  _buildStatusRow('Protection VPN', _deviceStatus!.vpnEnabled),
-                  _buildStatusRow(
-                    'Usage access',
-                    _deviceStatus!.usageAccessEnabled,
-                  ),
-                  _buildStatusRow(
-                    'App Blocker monitoring',
-                    _deviceStatus!.accessibilityEnabled,
-                  ),
-                ],
-                const Divider(height: 24),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              if (_deviceStatus == null)
                 const Text(
-                  'Recent tamper alerts',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                  'Waiting for the Child app to report its protection status.',
+                )
+              else ...[
+                Text(
+                  'Last connected ${DateFormat('MMM d, h:mm a').format(_deviceStatus!.lastSeenAt.toLocal())}',
                 ),
-                if (_tamperEvents.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 8),
-                    child: Text('No protection changes reported.'),
-                  )
-                else
-                  ..._tamperEvents.take(5).map(
-                        (event) => ListTile(
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          leading: const Icon(
-                            Icons.warning_amber,
-                            color: Colors.deepOrange,
-                          ),
-                          title: Text(_tamperEventLabel(event.eventType)),
-                          subtitle: Text(
-                            DateFormat('MMM d, h:mm a')
-                                .format(event.occurredAt.toLocal()),
-                          ),
+                _buildStatusRow('Protection VPN', _deviceStatus!.vpnEnabled),
+                _buildStatusRow(
+                  'Usage access',
+                  _deviceStatus!.usageAccessEnabled,
+                ),
+                _buildStatusRow(
+                  'App Blocker monitoring',
+                  _deviceStatus!.accessibilityEnabled,
+                ),
+              ],
+              const Divider(height: 24),
+              const Text(
+                'Recent tamper alerts',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              if (_tamperEvents.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Text('No protection changes reported.'),
+                )
+              else
+                ..._tamperEvents.take(5).map(
+                      (event) => ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(
+                          Icons.warning_amber,
+                          color: Colors.deepOrange,
+                        ),
+                        title: Text(_tamperEventLabel(event.eventType)),
+                        subtitle: Text(
+                          DateFormat('MMM d, h:mm a')
+                              .format(event.occurredAt.toLocal()),
                         ),
                       ),
-              ],
-            ),
+                    ),
+            ],
+          ),
         ),
         const SizedBox(height: 16),
         Row(
@@ -1214,6 +1193,115 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
               ),
             );
           }),
+        const Divider(height: 32),
+        Row(children: [
+          const Expanded(
+              child: Text('Blocked apps',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+          TextButton.icon(
+              onPressed: () => _addCustomBlock(app: true),
+              icon: const Icon(Icons.add),
+              label: const Text('Add'))
+        ]),
+        ...{
+          ..._currentlyBlockedApps,
+          ..._apps.map((app) => app.packageName)
+        }.map((package) => SwitchListTile(
+              title: Text(_apps
+                      .where((app) =>
+                          app.packageName == package && app.appLabel.isNotEmpty)
+                      .firstOrNull
+                      ?.appLabel ??
+                  package),
+              subtitle: Text(_familyApps.contains(package)
+                  ? 'Blocked by a family rule'
+                  : package),
+              value: _currentlyBlockedApps.contains(package),
+              onChanged: _familyApps.contains(package)
+                  ? null
+                  : (blocked) => blocked
+                      ? _blockApp(package, package)
+                      : _unblockApp(package),
+            )),
+        const Divider(height: 32),
+        const Text('Website content categories',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        ...[
+          'adult',
+          'social',
+          'gambling',
+          'games',
+          'streaming',
+          'violence'
+        ].map((category) => SwitchListTile(
+              title: Text(category[0].toUpperCase() + category.substring(1)),
+              value: _childBlockedCategories.contains(category),
+              subtitle: _familyCategories.contains(category)
+                  ? const Text('Blocked by a family rule')
+                  : null,
+              onChanged: _savingCategories ||
+                      _familyCategories.contains(category)
+                  ? null
+                  : (enabled) async {
+                      setState(() => _savingCategories = true);
+                      final selection = {..._childBlockedCategories};
+                      enabled
+                          ? selection.add(category)
+                          : selection.remove(category);
+                      try {
+                        await _family.setChildBlockedCategories(
+                            familyId: widget.familyId,
+                            childId: widget.childId,
+                            categoryIds: selection
+                                .difference(_familyCategories)
+                                .toList());
+                        await _load(silent: true);
+                      } catch (error) {
+                        if (mounted) {
+                          showAppError(
+                              context, 'update content categories', error);
+                        }
+                      } finally {
+                        if (mounted) setState(() => _savingCategories = false);
+                      }
+                    },
+            )),
+        const Divider(height: 32),
+        const Text('App activity categories',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        ...{for (final log in _apps) log.packageName: log.appLabel}
+            .entries
+            .map((app) => ListTile(
+                  title: Text(app.value.isEmpty ? app.key : app.value),
+                  trailing: DropdownButton<String>(
+                    value: _appCategories[app.key] ?? 'unproductive',
+                    items: [
+                      'educational',
+                      'creative',
+                      'social',
+                      'entertainment',
+                      'unproductive'
+                    ]
+                        .map((category) => DropdownMenuItem(
+                            value: category, child: Text(category)))
+                        .toList(),
+                    onChanged: (category) async {
+                      if (category == null) return;
+                      try {
+                        await _family.saveChildAppCategoryOverride(
+                            familyId: widget.familyId,
+                            childId: widget.childId,
+                            packageName: app.key,
+                            category: category);
+                        await _load(silent: true);
+                      } catch (error) {
+                        if (mounted) {
+                          showAppError(context, 'update app category', error);
+                        }
+                      }
+                    },
+                  ),
+                )),
         const Divider(height: 32),
         const Text(
           'Extra-time requests',

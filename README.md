@@ -1,5 +1,29 @@
 # Family Guard 🛡️
 
+## Child-specific controls and activity
+
+Each child's Activity Monitor has **Categorized Logs**, **Web Shield**,
+**Apps & Limits**, **Location & Zones**, and **Other**. Categorized Logs contains
+the live event feed and a single usage graph with **Daily** and **Hourly** modes.
+The graph shows the change from the previous day in percent and elapsed time;
+sessions crossing midnight are split between days. The VPN icon displays the
+device's reported ON/OFF state and marks reports older than three minutes as
+last reported rather than current.
+
+Parents can add website and app blocks, choose website content categories, set
+daily limits, and assign app activity categories for the selected child. Existing
+family rules still apply and are labeled in the controls. App categories are in
+Apps & Limits; task rewards, autonomy settings, and mood check-ins are in Other.
+Weekly insight cards and simulated alert buttons have been removed. Alerts are
+driven by recorded device events; background push still requires the Firebase
+configuration described below.
+
+For existing databases, apply
+[child-specific rules](supabase/migrations/202610220001_child_scoped_rules.sql)
+after the earlier migrations. This adds child-scoped rules with row-level
+security, an atomic category update function, and Realtime publication entries.
+Apply it before installing an updated app that uses these controls.
+
 A dual-app Flutter & Android solution for family network protection and activity monitoring.
 
 - **Parent App** (`apps/parent`): A glass-styled family dashboard with a child monitoring menu, seven-day app-activity charts, live location/geofence views, website-category filtering, custom domain blocks, and app blocking.
@@ -85,6 +109,7 @@ For a new project, run [supabase/schema.sql](supabase/schema.sql), then apply th
 7. [Activity categories, fair-trade suggestions, and mood insight flags](supabase/migrations/202610210001_rules_based_insights_and_trades.sql)
 8. [Location-sharing status alerts](supabase/migrations/202610210002_location_sharing_alerts.sql)
 9. [Task and homework categories](supabase/migrations/202610210003_task_categories.sql)
+10. [Child-specific rules and app categories](supabase/migrations/202610220001_child_scoped_rules.sql)
 
 The location, zones, tasks, moods, insights, and rewards migration adds child-opt-in location sharing and family zones, app restrictions within configured zones, parent-assigned tasks with private photo proof, mood check-ins, app activity categories, a computed weekly trust/insight summary, and task streak points. Task photos are stored in the private `task-proof` bucket. Location sharing is off by default; the child must turn it on and grant Android's "Allow all the time" location permission for background updates. When enabled, the child app sends an initial location immediately and refreshes periodically while showing a persistent Android notification. The parent's child-monitoring screen uses an interactive OpenStreetMap view with recent movement, location accuracy, known-place radii, and animated location marker. New known places default to 550 m, with 500 m and 600 m options. Arrival/exit events appear in the Parent alerts view and are sent as push notifications when Firebase is configured. Assigned tasks have their own Parent page, reachable from the child's monitoring screen. The app-activity view graphs the last seven days. New location rows trigger best-effort deletion of that child's records older than 30 days. Android still requires the child device's user to manually grant Usage access and Accessibility access; the app cannot bypass Android's restricted-settings approval.
 

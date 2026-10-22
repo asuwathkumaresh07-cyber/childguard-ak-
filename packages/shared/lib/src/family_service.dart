@@ -167,11 +167,61 @@ class FamilyService {
     return _store.fetchBlockDomains(familyId);
   }
 
+  Future<List<String>> fetchChildBlockDomains({
+    required String familyId,
+    required String childId,
+  }) async {
+    final domains = await fetchBlockDomains(familyId);
+    if (!isUsingSupabase) return domains;
+    return {
+      ...domains,
+      ...await _supabase.fetchChildBlockedDomainOverrides(
+        familyId: familyId,
+        childId: childId,
+      ),
+    }.toList()
+      ..sort();
+  }
+
   Future<void> addBlockDomain(String familyId, String domain) async {
     if (isUsingSupabase) {
       return _supabase.addBlockDomain(familyId, domain);
     }
     return _store.addBlockDomain(familyId, domain);
+  }
+
+  Future<void> addChildBlockedDomain({
+    required String familyId,
+    required String childId,
+    required String domain,
+  }) async {
+    if (isUsingSupabase) {
+      return _supabase.addChildBlockedDomain(
+        familyId: familyId,
+        childId: childId,
+        domain: domain,
+      );
+    }
+    return _store.addBlockDomain(familyId, domain);
+  }
+
+  Future<void> removeChildBlockedDomain({
+    required String familyId,
+    required String childId,
+    required String domain,
+  }) async {
+    if (isUsingSupabase) {
+      return _supabase.removeChildBlockedDomain(
+        familyId: familyId,
+        childId: childId,
+        domain: domain,
+      );
+    }
+    final entries = await _store.fetchBlockList(familyId);
+    final entry = entries
+        .where((item) => item.domain.toLowerCase() == domain.toLowerCase())
+        .firstOrNull;
+    if (entry != null) await _store.removeBlockDomain(entry.id);
   }
 
   Future<void> removeBlockDomain(String entryId) async {
@@ -220,6 +270,37 @@ class FamilyService {
     return _store.toggleCategory(category, enabled);
   }
 
+  Future<List<String>> fetchChildBlockedCategories({
+    required String familyId,
+    required String childId,
+  }) async {
+    final categories = await fetchBlockedCategories(familyId);
+    if (!isUsingSupabase) return categories;
+    return {
+      ...categories,
+      ...await _supabase.fetchChildBlockedCategories(
+        familyId: familyId,
+        childId: childId,
+      ),
+    }.toList()
+      ..sort();
+  }
+
+  Future<void> setChildBlockedCategories({
+    required String familyId,
+    required String childId,
+    required List<String> categoryIds,
+  }) async {
+    if (isUsingSupabase) {
+      return _supabase.setChildBlockedCategories(
+        familyId: familyId,
+        childId: childId,
+        categoryIds: categoryIds,
+      );
+    }
+    return _store.setBlockedCategories(categoryIds);
+  }
+
   // ---------------------------------------------------------------------------
   // App Blocking
   // ---------------------------------------------------------------------------
@@ -236,6 +317,21 @@ class FamilyService {
       return _supabase.fetchBlockedAppPackages(familyId);
     }
     return _store.fetchBlockedAppPackages(familyId);
+  }
+
+  Future<List<String>> fetchChildBlockedAppPackages({
+    required String familyId,
+    required String childId,
+  }) async {
+    final packages = await fetchBlockedAppPackages(familyId);
+    if (!isUsingSupabase) return packages;
+    return {
+      ...packages,
+      ...await _supabase.fetchChildBlockedAppPackages(
+        familyId: familyId,
+        childId: childId,
+      ),
+    }.toList();
   }
 
   Future<void> addBlockedApp({
@@ -255,6 +351,45 @@ class FamilyService {
       packageName: packageName,
       appLabel: appLabel,
     );
+  }
+
+  Future<void> addChildBlockedApp({
+    required String familyId,
+    required String childId,
+    required String packageName,
+    required String appLabel,
+  }) async {
+    if (isUsingSupabase) {
+      return _supabase.addChildBlockedApp(
+        familyId: familyId,
+        childId: childId,
+        packageName: packageName,
+        appLabel: appLabel,
+      );
+    }
+    return _store.addBlockedApp(
+      familyId: familyId,
+      packageName: packageName,
+      appLabel: appLabel,
+    );
+  }
+
+  Future<void> removeChildBlockedApp({
+    required String familyId,
+    required String childId,
+    required String packageName,
+  }) async {
+    if (isUsingSupabase) {
+      return _supabase.removeChildBlockedApp(
+        familyId: familyId,
+        childId: childId,
+        packageName: packageName,
+      );
+    }
+    final entries = await _store.fetchBlockedApps(familyId);
+    final entry =
+        entries.where((item) => item.packageName == packageName).firstOrNull;
+    if (entry != null) await _store.removeBlockedApp(entry.id);
   }
 
   Future<void> removeBlockedApp(String entryId) async {
@@ -806,6 +941,34 @@ class FamilyService {
   Future<Map<String, String>> fetchChildAppCategories(String familyId) {
     _requireSupabaseForUsageControls();
     return _supabase.fetchChildAppCategories(familyId);
+  }
+
+  Future<Map<String, String>> fetchAppCategoriesForChild({
+    required String familyId,
+    required String childId,
+  }) async {
+    if (!isUsingSupabase) return {};
+    final categories = await fetchChildAppCategories(familyId);
+    categories.addAll(await _supabase.fetchChildAppCategoryOverrides(
+      familyId: familyId,
+      childId: childId,
+    ));
+    return categories;
+  }
+
+  Future<void> saveChildAppCategoryOverride({
+    required String familyId,
+    required String childId,
+    required String packageName,
+    required String category,
+  }) {
+    _requireSupabaseForUsageControls();
+    return _supabase.saveChildAppCategoryOverride(
+      familyId: familyId,
+      childId: childId,
+      packageName: packageName,
+      category: category,
+    );
   }
 
   void _requireSupabaseForUsageControls() {

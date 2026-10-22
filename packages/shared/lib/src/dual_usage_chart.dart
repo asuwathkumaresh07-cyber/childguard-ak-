@@ -5,9 +5,7 @@ import 'package:intl/intl.dart';
 
 import 'models.dart';
 
-/// A comprehensive usage chart providing both:
-/// 1. Daily Usage Bar Graph (7-day screen time with animated bars & duration labels)
-/// 2. Hourly Usage Point Graph (24-hour scatter/point curve with peak points & tooltips)
+/// Daily totals and hourly usage points with a prior-day comparison.
 class DualUsageChart extends StatefulWidget {
   const DualUsageChart({
     super.key,
@@ -15,7 +13,7 @@ class DualUsageChart extends StatefulWidget {
     this.title = 'Screen Time & Usage Analytics',
     this.primaryColor,
     this.secondaryColor,
-    this.initialMode = DualChartMode.both,
+    this.initialMode = DualChartMode.daily,
   });
 
   final List<AppUsageLog> logs;
@@ -28,11 +26,7 @@ class DualUsageChart extends StatefulWidget {
   State<DualUsageChart> createState() => _DualUsageChartState();
 }
 
-enum DualChartMode {
-  both,
-  dailyBar,
-  hourlyPoint,
-}
+enum DualChartMode { daily, hourly }
 
 class _DualUsageChartState extends State<DualUsageChart> {
   late DualChartMode _mode = widget.initialMode;
@@ -59,45 +53,33 @@ class _DualUsageChartState extends State<DualUsageChart> {
     // Last 7 days ending today
     final days = List.generate(
       7,
-      (i) => DateTime(now.year, now.month, now.day).subtract(Duration(days: 6 - i)),
+      (i) => DateTime(now.year, now.month, now.day)
+          .subtract(Duration(days: 6 - i)),
     );
 
-    // Calculate daily seconds for the 7 days
-    final dailySeconds = List<int>.generate(7, (i) {
-      final day = days[i];
-      return widget.logs.where((log) {
-        final start = log.startedAt.toLocal();
-        return start.year == day.year && start.month == day.month && start.day == day.day;
-      }).fold<int>(
-        0,
-        (sum, log) => sum + math.max(0, log.durationSeconds ?? log.endedAt?.difference(log.startedAt).inSeconds ?? 0),
-      );
-    });
-
-    final totalWeekSeconds = dailySeconds.fold<int>(0, (a, b) => a + b);
+    final dailySeconds = days
+        .map((day) =>
+            _secondsBetween(day, DateTime(day.year, day.month, day.day + 1)))
+        .toList();
     final selectedDay = days[_selectedDayIndex.clamp(0, 6)];
     final selectedDaySeconds = dailySeconds[_selectedDayIndex.clamp(0, 6)];
+    final previousDay =
+        DateTime(selectedDay.year, selectedDay.month, selectedDay.day - 1);
+    final previousDaySeconds = _secondsBetween(previousDay, selectedDay);
+    final changeSeconds = selectedDaySeconds - previousDaySeconds;
+    final changePercent = previousDaySeconds == 0
+        ? null
+        : changeSeconds.abs() / previousDaySeconds * 100;
 
     // Calculate 24-hour seconds for selected day
-    final hourlySeconds = List<int>.filled(24, 0);
-    for (final log in widget.logs) {
-      final start = log.startedAt.toLocal();
-      if (start.year != selectedDay.year || start.month != selectedDay.month || start.day != selectedDay.day) {
-        continue;
-      }
-      final duration = math.max(0, log.durationSeconds ?? log.endedAt?.difference(log.startedAt).inSeconds ?? 0);
-      var cursor = start;
-      var remaining = duration;
-      final dayEnd = DateTime(selectedDay.year, selectedDay.month, selectedDay.day + 1);
-
-      while (remaining > 0 && cursor.isBefore(dayEnd)) {
-        final nextHour = DateTime(cursor.year, cursor.month, cursor.day, cursor.hour + 1);
-        final slice = math.min(remaining, nextHour.difference(cursor).inSeconds);
-        hourlySeconds[cursor.hour] += slice;
-        cursor = nextHour;
-        remaining -= slice;
-      }
-    }
+    final hourlySeconds = List.generate(
+        24,
+        (hour) => _secondsBetween(
+              DateTime(
+                  selectedDay.year, selectedDay.month, selectedDay.day, hour),
+              DateTime(selectedDay.year, selectedDay.month, selectedDay.day,
+                  hour + 1),
+            ));
 
     // Peak hour
     var peakHour = 0;
@@ -137,55 +119,47 @@ class _DualUsageChartState extends State<DualUsageChart> {
                 ],
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                '7d: ${_formatDuration(totalWeekSeconds)}',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  color: primary,
-                ),
-              ),
+            _buildChangeIndicator(
+              changeSeconds: changeSeconds,
+              changePercent: changePercent,
+              hasPreviousUsage: previousDaySeconds > 0,
             ),
           ],
         ),
         const SizedBox(height: 12),
 
-        // Mode switch pills: [Both Graphs] | [Daily Bar] | [Hourly Point]
+        // The selector chooses one graph at a time.
         Container(
           height: 34,
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
-            color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+            color:
+                isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
             children: [
-              _buildModePill(DualChartMode.both, 'Both Graphs', primary),
-              _buildModePill(DualChartMode.dailyBar, 'Daily Bar', primary),
-              _buildModePill(DualChartMode.hourlyPoint, 'Hourly Points', primary),
+              _buildModePill(DualChartMode.daily, 'Daily', primary),
+              _buildModePill(DualChartMode.hourly, 'Hourly', primary),
             ],
           ),
         ),
         const SizedBox(height: 16),
 
         // 1. Daily Usage Bar Graph
-        if (_mode == DualChartMode.both || _mode == DualChartMode.dailyBar) ...[
+        if (_mode == DualChartMode.daily) ...[
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 'Daily Usage (Bar Graph)',
-                style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
+                style: theme.textTheme.labelMedium
+                    ?.copyWith(fontWeight: FontWeight.w700),
               ),
               Text(
                 'Tap bar to inspect day',
-                style: theme.textTheme.labelSmall?.copyWith(color: theme.hintColor),
+                style: theme.textTheme.labelSmall
+                    ?.copyWith(color: theme.hintColor),
               ),
             ],
           ),
@@ -210,20 +184,22 @@ class _DualUsageChartState extends State<DualUsageChart> {
           const SizedBox(height: 6),
         ],
 
-        if (_mode == DualChartMode.both) const SizedBox(height: 18),
-
         // 2. Hourly Usage Point Graph
-        if (_mode == DualChartMode.both || _mode == DualChartMode.hourlyPoint) ...[
+        if (_mode == DualChartMode.hourly) ...[
+          _buildHourlyDaySelector(days, primary),
+          const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 'Hourly Usage (Point Graph)',
-                style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
+                style: theme.textTheme.labelMedium
+                    ?.copyWith(fontWeight: FontWeight.w700),
               ),
               if (peakSeconds > 0)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: secondary.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
@@ -272,7 +248,8 @@ class _DualUsageChartState extends State<DualUsageChart> {
             const SizedBox(height: 6),
             Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
                   color: secondary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
@@ -290,6 +267,102 @@ class _DualUsageChartState extends State<DualUsageChart> {
           ],
         ],
       ],
+    );
+  }
+
+  int _secondsBetween(DateTime from, DateTime to) {
+    var total = 0;
+    for (final log in widget.logs) {
+      final start = log.startedAt.toLocal();
+      final seconds = math.max(
+          0,
+          log.durationSeconds ??
+              log.endedAt?.difference(log.startedAt).inSeconds ??
+              0);
+      final end = start.add(Duration(seconds: seconds));
+      final overlapStart = start.isAfter(from) ? start : from;
+      final overlapEnd = end.isBefore(to) ? end : to;
+      if (overlapEnd.isAfter(overlapStart)) {
+        total += overlapEnd.difference(overlapStart).inSeconds;
+      }
+    }
+    return total;
+  }
+
+  Widget _buildChangeIndicator({
+    required int changeSeconds,
+    required double? changePercent,
+    required bool hasPreviousUsage,
+  }) {
+    final isIncrease = changeSeconds > 0;
+    final isDecrease = changeSeconds < 0;
+    final color = isIncrease
+        ? const Color(0xFFB65347)
+        : isDecrease
+            ? const Color(0xFF2D806D)
+            : Theme.of(context).colorScheme.onSurfaceVariant;
+    final icon = isIncrease
+        ? Icons.trending_up
+        : isDecrease
+            ? Icons.trending_down
+            : Icons.trending_flat;
+    final value = hasPreviousUsage
+        ? '${changePercent!.round()}%'
+        : (changeSeconds > 0 ? 'New' : 'No change');
+
+    return Tooltip(
+      message:
+          '${_formatDuration(changeSeconds.abs())} ${isIncrease ? "more" : isDecrease ? "less" : "change"} than the previous day',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .12),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: color),
+            const SizedBox(width: 3),
+            Text(
+              '$value · ${_formatDuration(changeSeconds.abs())}',
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHourlyDaySelector(List<DateTime> days, Color primary) {
+    return SizedBox(
+      height: 32,
+      child: Row(
+        children: [
+          for (var index = 0; index < days.length; index++)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: ChoiceChip(
+                  label: Text(DateFormat('E').format(days[index])),
+                  selected: _selectedDayIndex == index,
+                  onSelected: (_) => setState(() {
+                    _selectedDayIndex = index;
+                    _hoveredHour = null;
+                  }),
+                  labelPadding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  selectedColor: primary.withValues(alpha: .16),
+                  showCheckmark: false,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -319,7 +392,11 @@ class _DualUsageChartState extends State<DualUsageChart> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: active ? Colors.white : (Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87),
+              color: active
+                  ? Colors.white
+                  : (Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white70
+                      : Colors.black87),
             ),
           ),
         ),
@@ -372,11 +449,16 @@ class _DailyBarChartWidget extends StatelessWidget {
                 children: [
                   // Value label on top of bar
                   Text(
-                    hrs >= 1.0 ? '${hrs.toStringAsFixed(1)}h' : (sec > 0 ? '${(sec ~/ 60)}m' : '0'),
+                    hrs >= 1.0
+                        ? '${hrs.toStringAsFixed(1)}h'
+                        : (sec > 0 ? '${(sec ~/ 60)}m' : '0'),
                     style: TextStyle(
                       fontSize: 9,
-                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                      color: isSelected ? primaryColor : (isDark ? Colors.white60 : Colors.black54),
+                      fontWeight:
+                          isSelected ? FontWeight.w800 : FontWeight.w500,
+                      color: isSelected
+                          ? primaryColor
+                          : (isDark ? Colors.white60 : Colors.black54),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -394,19 +476,25 @@ class _DailyBarChartWidget extends StatelessWidget {
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
                               colors: isSelected
-                                  ? [primaryColor, primaryColor.withValues(alpha: 0.6)]
+                                  ? [
+                                      primaryColor,
+                                      primaryColor.withValues(alpha: 0.6)
+                                    ]
                                   : [
                                       primaryColor.withValues(alpha: 0.45),
                                       primaryColor.withValues(alpha: 0.20),
                                     ],
                             ),
                             border: isSelected
-                                ? Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5)
+                                ? Border.all(
+                                    color: Colors.white.withValues(alpha: 0.8),
+                                    width: 1.5)
                                 : null,
                             boxShadow: isSelected
                                 ? [
                                     BoxShadow(
-                                      color: primaryColor.withValues(alpha: 0.4),
+                                      color:
+                                          primaryColor.withValues(alpha: 0.4),
                                       blurRadius: 6,
                                       offset: const Offset(0, 2),
                                     )
@@ -420,17 +508,23 @@ class _DailyBarChartWidget extends StatelessWidget {
                   const SizedBox(height: 6),
                   // Day of week label
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                     decoration: BoxDecoration(
-                      color: isSelected ? primaryColor.withValues(alpha: 0.15) : Colors.transparent,
+                      color: isSelected
+                          ? primaryColor.withValues(alpha: 0.15)
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       DateFormat('E').format(day),
                       style: TextStyle(
                         fontSize: 10,
-                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                        color: isSelected ? primaryColor : (isDark ? Colors.white70 : Colors.black87),
+                        fontWeight:
+                            isSelected ? FontWeight.w800 : FontWeight.w600,
+                        color: isSelected
+                            ? primaryColor
+                            : (isDark ? Colors.white70 : Colors.black87),
                       ),
                     ),
                   ),
@@ -468,7 +562,8 @@ class _HourlyPointChartWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onPanDown: (details) => _detectHour(details.localPosition, context.size),
-      onPanUpdate: (details) => _detectHour(details.localPosition, context.size),
+      onPanUpdate: (details) =>
+          _detectHour(details.localPosition, context.size),
       child: CustomPaint(
         size: Size.infinite,
         painter: _HourlyPointChartPainter(
@@ -516,7 +611,8 @@ class _HourlyPointChartPainter extends CustomPainter {
     const bottom = 12.0;
     final chartWidth = size.width - left - right;
     final chartHeight = size.height - top - bottom;
-    final maxValue = math.max(600, values.fold<int>(0, math.max)); // At least 10 min scale
+    final maxValue =
+        math.max(600, values.fold<int>(0, math.max)); // At least 10 min scale
 
     // 1. Grid horizontal lines
     final gridPaint = Paint()
@@ -524,7 +620,8 @@ class _HourlyPointChartPainter extends CustomPainter {
       ..strokeWidth = 1;
     for (var i = 0; i < 3; i++) {
       final y = top + chartHeight * i / 2;
-      canvas.drawLine(Offset(left, y), Offset(size.width - right, y), gridPaint);
+      canvas.drawLine(
+          Offset(left, y), Offset(size.width - right, y), gridPaint);
     }
 
     // 2. Compute points for 24 hours

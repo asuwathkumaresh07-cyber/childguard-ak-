@@ -15,11 +15,13 @@ class ChildPlansScreen extends StatefulWidget {
     required this.familyId,
     required this.childId,
     required this.childName,
+    this.showOther = false,
   });
 
   final String familyId;
   final String childId;
   final String childName;
+  final bool showOther;
 
   @override
   State<ChildPlansScreen> createState() => _ChildPlansScreenState();
@@ -29,7 +31,6 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
   final _family = FamilyService();
   bool _loading = true;
   String? _error;
-  String? _insightError;
   String? _locationError;
   ChildLocation? _location;
   List<ChildLocation> _locationHistory = [];
@@ -37,13 +38,9 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
   List<ZoneAppRule> _zoneRules = [];
   List<ChildMoodCheckin> _moods = [];
   List<ZoneEvent> _zoneEvents = [];
-  List<AppUsageLog> _usage = [];
-  ChildWeeklyInsight? _insight;
   ChildStreak? _streak;
   ChildAutonomySettings? _autonomy;
-  Map<String, String> _categories = {};
   RealtimeChannel? _locationRealtimeSub;
-  RealtimeChannel? _insightRealtimeSub;
   Timer? _locationPoll;
   bool _locationRefreshInProgress = false;
 
@@ -53,17 +50,6 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
     _locationRealtimeSub = _family.subscribeToChildLocations(
       widget.childId,
       _onLocationUpdate,
-    );
-    _insightRealtimeSub = _family.subscribeToChildWeeklyInsights(
-      widget.childId,
-      (insight) {
-        if (!mounted ||
-            insight.familyId != widget.familyId ||
-            insight.childId != widget.childId) {
-          return;
-        }
-        setState(() => _insight = insight);
-      },
     );
     _locationPoll = Timer.periodic(
       const Duration(seconds: 30),
@@ -75,7 +61,6 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
   @override
   void dispose() {
     _locationRealtimeSub?.unsubscribe();
-    _insightRealtimeSub?.unsubscribe();
     _locationPoll?.cancel();
     super.dispose();
   }
@@ -178,14 +163,7 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
           familyId: widget.familyId,
           childId: widget.childId,
         ),
-        _family.fetchAppUsageLogs(
-          familyId: widget.familyId,
-          childId: widget.childId,
-          limit: 1000,
-        ),
-        _family.fetchLatestChildWeeklyInsight(widget.childId),
         _family.fetchChildStreak(widget.childId),
-        _family.fetchChildAppCategories(widget.familyId),
         _family.fetchZoneEvents(
           familyId: widget.familyId,
           childId: widget.childId,
@@ -195,37 +173,14 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
           childId: widget.childId,
         ),
       ]);
-      var insight = values[4] as ChildWeeklyInsight?;
-      String? insightError;
-      final now = DateTime.now();
-      final currentWeekStart = DateTime(
-        now.year,
-        now.month,
-        now.day,
-      ).subtract(Duration(days: now.weekday - DateTime.monday));
-      if (insight == null || insight.weekStart.isBefore(currentWeekStart)) {
-        try {
-          insight = await _family.generateChildWeeklyInsight(
-            familyId: widget.familyId,
-            childId: widget.childId,
-          );
-        } catch (error) {
-          reportAppError('refresh weekly insight', error);
-          insightError = userFacingError;
-        }
-      }
       if (!mounted) return;
       setState(() {
         _zones = values[0] as List<FamilyZone>;
         _zoneRules = values[1] as List<ZoneAppRule>;
         _moods = values[2] as List<ChildMoodCheckin>;
-        _usage = values[3] as List<AppUsageLog>;
-        _insight = insight;
-        _insightError = insightError;
-        _streak = values[5] as ChildStreak?;
-        _categories = values[6] as Map<String, String>;
-        _zoneEvents = values[7] as List<ZoneEvent>;
-        _autonomy = values[8] as ChildAutonomySettings;
+        _streak = values[3] as ChildStreak?;
+        _zoneEvents = values[4] as List<ZoneEvent>;
+        _autonomy = values[5] as ChildAutonomySettings;
         _loading = false;
       });
     } catch (error) {
@@ -498,23 +453,6 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
     }
   }
 
-  Future<void> _generateInsight() async {
-    try {
-      final insight = await _family.generateChildWeeklyInsight(
-        familyId: widget.familyId,
-        childId: widget.childId,
-      );
-      if (mounted) {
-        setState(() {
-          _insight = insight;
-          _insightError = null;
-        });
-      }
-    } catch (error) {
-      _showError('generate weekly insight', error);
-    }
-  }
-
   Future<void> _configureAutonomy() async {
     final current = _autonomy ??
         ChildAutonomySettings(
@@ -618,19 +556,6 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
     }
   }
 
-  Future<void> _setCategory(String packageName, String category) async {
-    try {
-      await _family.saveChildAppCategory(
-        familyId: widget.familyId,
-        packageName: packageName,
-        category: category,
-      );
-      if (mounted) setState(() => _categories[packageName] = category);
-    } catch (error) {
-      _showError('categorize app', error);
-    }
-  }
-
   Future<void> _removeZone(FamilyZone zone) async {
     try {
       await _family.removeFamilyZone(widget.familyId, zone.id);
@@ -722,10 +647,6 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
-    final apps = {
-      for (final log in _usage)
-        log.packageName: log.appLabel.isEmpty ? log.packageName : log.appLabel,
-    };
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
@@ -743,308 +664,233 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
                 ),
               ),
             ),
-          _sectionTitle(
-            'Location & zones',
-            trailing: IconButton(
-              tooltip: 'Refresh',
-              onPressed: _load,
-              icon: const Icon(Icons.refresh),
+          if (!widget.showOther) ...[
+            _sectionTitle(
+              'Location & zones',
+              trailing: IconButton(
+                tooltip: 'Refresh',
+                onPressed: _load,
+                icon: const Icon(Icons.refresh),
+              ),
             ),
-          ),
-          GlassCard(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.radar, color: Color(0xFF347A75)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _location == null
-                            ? 'Waiting for location'
-                            : '${widget.childName} · ${_locationFreshness(_location)}',
-                        style: const TextStyle(fontWeight: FontWeight.w700),
+            GlassCard(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.radar, color: Color(0xFF347A75)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _location == null
+                              ? 'Waiting for location'
+                              : '${widget.childName} · ${_locationFreshness(_location)}',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
                       ),
+                      if (_location != null)
+                        Text(
+                          DateFormat('h:mm a')
+                              .format(_location!.recordedAt.toLocal()),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  LocationRadar(
+                    location: _location,
+                    history: _locationHistory,
+                    zones: _zones,
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Icon(
+                        _activeZone == null
+                            ? Icons.near_me_outlined
+                            : Icons.location_on,
+                        size: 18,
+                        color: _activeZone == null
+                            ? const Color(0xFF628187)
+                            : const Color(0xFF2D806D),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          _location == null
+                              ? 'Waiting for the first update. Turn on “Share my location” in the Child app.'
+                              : _locationFreshness(_location) == 'Stale'
+                                  ? 'Last seen ${_activeZone == null ? 'outside saved places' : 'at ${_activeZone!.name}'} · update is stale'
+                                  : _activeZone == null
+                                      ? 'Unknown place · outside saved places'
+                                      : 'At ${_activeZone!.name}',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      if (_location?.accuracyMeters != null)
+                        Text(
+                          '±${_location!.accuracyMeters!.round()} m',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                    ],
+                  ),
+                  if (_locationError != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      userFacingError,
+                      style:
+                          TextStyle(color: Theme.of(context).colorScheme.error),
                     ),
-                    if (_location != null)
-                      Text(
-                        DateFormat('h:mm a')
-                            .format(_location!.recordedAt.toLocal()),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
                   ],
-                ),
-                const SizedBox(height: 12),
-                LocationRadar(
-                  location: _location,
-                  history: _locationHistory,
-                  zones: _zones,
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Icon(
-                      _activeZone == null
-                          ? Icons.near_me_outlined
-                          : Icons.location_on,
-                      size: 18,
-                      color: _activeZone == null
-                          ? const Color(0xFF628187)
-                          : const Color(0xFF2D806D),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        _location == null
-                            ? 'Waiting for the first update. Turn on “Share my location” in the Child app.'
-                            : _locationFreshness(_location) == 'Stale'
-                                ? 'Last seen ${_activeZone == null ? 'outside saved places' : 'at ${_activeZone!.name}'} · update is stale'
-                                : _activeZone == null
-                                    ? 'Unknown place · outside saved places'
-                                    : 'At ${_activeZone!.name}',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed:
+                            _location == null ? null : _openLocationInMaps,
+                        icon: const Icon(Icons.map_outlined),
+                        label: const Text('View location'),
                       ),
-                    ),
-                    if (_location?.accuracyMeters != null)
-                      Text(
-                        '±${_location!.accuracyMeters!.round()} m',
-                        style: Theme.of(context).textTheme.bodySmall,
+                      OutlinedButton.icon(
+                        onPressed: _createZone,
+                        icon: const Icon(Icons.add_location_alt),
+                        label: const Text('Add known place'),
                       ),
-                  ],
-                ),
-                if (_locationError != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    userFacingError,
-                    style:
-                        TextStyle(color: Theme.of(context).colorScheme.error),
+                    ],
                   ),
                 ],
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: _location == null ? null : _openLocationInMaps,
-                      icon: const Icon(Icons.map_outlined),
-                      label: const Text('View location'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: _createZone,
-                      icon: const Icon(Icons.add_location_alt),
-                      label: const Text('Add known place'),
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
-          ),
-          if (_zones.isEmpty)
-            const Text(
-              'No saved places yet. Add Home, School, or Tuition to see whether your child is at a known place.',
-            )
-          else
-            ..._zones.map((zone) {
-              final rules = _zoneRules.where((r) => r.zoneId == zone.id);
-              return Card(
-                child: ExpansionTile(
-                  title: Text(zone.name),
-                  subtitle: Text(
-                    '${zone.zoneType} · ${zone.radiusMeters} m radius',
-                  ),
-                  trailing: IconButton(
-                    tooltip: 'Delete zone',
-                    onPressed: () => _removeZone(zone),
-                    icon: const Icon(Icons.delete_outline),
-                  ),
-                  children: [
-                    ...rules.map(
-                      (rule) => ListTile(
-                        dense: true,
-                        title: Text(
-                          rule.appLabel.isEmpty
-                              ? rule.packageName
-                              : rule.appLabel,
-                        ),
-                        subtitle: Text(rule.packageName),
-                        trailing: IconButton(
-                          onPressed: () => _removeRule(rule),
-                          icon: const Icon(Icons.remove_circle_outline),
+            if (_zones.isEmpty)
+              const Text(
+                'No saved places yet. Add Home, School, or Tuition to see whether your child is at a known place.',
+              )
+            else
+              ..._zones.map((zone) {
+                final rules = _zoneRules.where((r) => r.zoneId == zone.id);
+                return Card(
+                  child: ExpansionTile(
+                    title: Text(zone.name),
+                    subtitle: Text(
+                      '${zone.zoneType} · ${zone.radiusMeters} m radius',
+                    ),
+                    trailing: IconButton(
+                      tooltip: 'Delete zone',
+                      onPressed: () => _removeZone(zone),
+                      icon: const Icon(Icons.delete_outline),
+                    ),
+                    children: [
+                      ...rules.map(
+                        (rule) => ListTile(
+                          dense: true,
+                          title: Text(
+                            rule.appLabel.isEmpty
+                                ? rule.packageName
+                                : rule.appLabel,
+                          ),
+                          subtitle: Text(rule.packageName),
+                          trailing: IconButton(
+                            onPressed: () => _removeRule(rule),
+                            icon: const Icon(Icons.remove_circle_outline),
+                          ),
                         ),
                       ),
-                    ),
-                    TextButton.icon(
-                      onPressed: () => _addZoneRule(zone),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Restrict an app in this zone'),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          if (_zoneEvents.isNotEmpty) ...[
-            _sectionTitle('Recent zone events'),
-            ..._zoneEvents.take(10).map((event) {
-              final zone = _zones.where((item) => item.id == event.zoneId);
-              final zoneName = zone.isEmpty ? 'Zone' : zone.first.name;
-              return ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                  event.eventType == 'off_task_app'
-                      ? Icons.warning_amber
-                      : Icons.place,
-                ),
-                title: Text(
-                  event.eventType == 'off_task_app'
-                      ? '${event.packageName ?? 'App'} in $zoneName'
-                      : '${event.eventType} $zoneName',
-                ),
-                subtitle: Text(
-                  DateFormat('MMM d, h:mm a')
-                      .format(event.occurredAt.toLocal()),
-                ),
-                trailing: event.eventType == 'off_task_app' && zone.isNotEmpty
-                    ? IconButton(
-                        tooltip: 'Restrict this app in this zone',
-                        onPressed: () => _addZoneRule(zone.first),
-                        icon: const Icon(Icons.block),
-                      )
-                    : null,
-              );
-            }),
+                      TextButton.icon(
+                        onPressed: () => _addZoneRule(zone),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Restrict an app in this zone'),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            if (_zoneEvents.isNotEmpty) ...[
+              _sectionTitle('Recent zone events'),
+              ..._zoneEvents.take(10).map((event) {
+                final zone = _zones.where((item) => item.id == event.zoneId);
+                final zoneName = zone.isEmpty ? 'Zone' : zone.first.name;
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    event.eventType == 'off_task_app'
+                        ? Icons.warning_amber
+                        : Icons.place,
+                  ),
+                  title: Text(
+                    event.eventType == 'off_task_app'
+                        ? '${event.packageName ?? 'App'} in $zoneName'
+                        : '${event.eventType} $zoneName',
+                  ),
+                  subtitle: Text(
+                    DateFormat('MMM d, h:mm a')
+                        .format(event.occurredAt.toLocal()),
+                  ),
+                  trailing: event.eventType == 'off_task_app' && zone.isNotEmpty
+                      ? IconButton(
+                          tooltip: 'Restrict this app in this zone',
+                          onPressed: () => _addZoneRule(zone.first),
+                          icon: const Icon(Icons.block),
+                        )
+                      : null,
+                );
+              }),
+            ],
           ],
-          _sectionTitle(
-            'Weekly trust & insights',
-            trailing: FilledButton.tonal(
-              onPressed: _generateInsight,
-              child: const Text('Generate'),
-            ),
-          ),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.insights),
-              title: Text(
-                _insight == null
-                    ? 'No weekly summary yet'
-                    : 'Trust score: ${_insight!.trustScore}/100',
-              ),
-              subtitle: Text(
-                _insight?.summary ??
-                    'Generate a summary from recorded app use, completed tasks, and protection events.',
-              ),
-            ),
-          ),
-          if (_insightError != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                _insightError!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ),
-          if (_insight?.moodAlert == true)
-            Card(
-              color: Theme.of(context).colorScheme.errorContainer,
-              child: ListTile(
-                leading: const Icon(Icons.health_and_safety_outlined),
-                title: const Text('Consider a supportive check-in'),
-                subtitle: Text(
-                  _insight!.moodAlertReason ??
-                      'Recent mood check-ins may need a supportive conversation.',
-                ),
-              ),
-            ),
-          if (_streak != null)
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.local_fire_department),
-                title: Text(
-                  '${_streak!.currentStreak} approved-task streak · ${_streak!.totalPoints} points',
-                ),
-                subtitle: Text(
-                  'Best: ${_streak!.bestStreak} tasks · '
-                  '${_streak!.bonusTimeMinutes} bonus minutes · '
-                  '${_streak!.appUnlockCredits} app unlocks available',
-                ),
-              ),
-            ),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.tune),
-              title: Text(
-                _autonomy?.enabled == true
-                    ? 'Automatic extra time is enabled'
-                    : 'Automatic extra time is off',
-              ),
-              subtitle: Text(
-                _autonomy?.enabled == true
-                    ? 'At score ${_autonomy!.minTrustScore}, up to ${_autonomy!.dailyExtraMinutesCap} minutes per day across apps.'
-                    : 'Set a trust threshold and daily cap. Parent-issued VPN codes remain required.',
-              ),
-              trailing: IconButton(
-                tooltip: 'Configure trust-based autonomy',
-                onPressed: _configureAutonomy,
-                icon: const Icon(Icons.settings),
-              ),
-            ),
-          ),
-          _sectionTitle('App activity categories'),
-          if (apps.isEmpty)
-            const Text('App usage will appear after the child device syncs.')
-          else
-            ...apps.entries.map(
-              (entry) => ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(entry.value),
-                subtitle: Text(entry.key),
-                trailing: DropdownButton<String>(
-                  value: _categories[entry.key] ?? 'unproductive',
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'educational',
-                      child: Text('Educational'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'creative',
-                      child: Text('Creative'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'social',
-                      child: Text('Social'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'entertainment',
-                      child: Text('Entertainment'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'unproductive',
-                      child: Text('Unproductive'),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) _setCategory(entry.key, value);
-                  },
-                ),
-              ),
-            ),
-          _sectionTitle('Recent mood check-ins'),
-          if (_moods.isEmpty)
-            const Text('No mood check-ins have been submitted.')
-          else
-            ..._moods.take(10).map(
-                  (mood) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.mood),
-                    title: Text(mood.mood),
-                    subtitle: Text(
-                      '${DateFormat('MMM d, h:mm a').format(mood.createdAt.toLocal())}'
-                      '${mood.note.isEmpty ? '' : ' · ${mood.note}'}',
-                    ),
+          if (widget.showOther) ...[
+            if (_streak != null)
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.local_fire_department),
+                  title: Text(
+                    '${_streak!.currentStreak} approved-task streak · ${_streak!.totalPoints} points',
+                  ),
+                  subtitle: Text(
+                    'Best: ${_streak!.bestStreak} tasks · '
+                    '${_streak!.bonusTimeMinutes} bonus minutes · '
+                    '${_streak!.appUnlockCredits} app unlocks available',
                   ),
                 ),
+              ),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.tune),
+                title: Text(
+                  _autonomy?.enabled == true
+                      ? 'Automatic extra time is enabled'
+                      : 'Automatic extra time is off',
+                ),
+                subtitle: Text(
+                  _autonomy?.enabled == true
+                      ? 'At score ${_autonomy!.minTrustScore}, up to ${_autonomy!.dailyExtraMinutesCap} minutes per day across apps.'
+                      : 'Set a trust threshold and daily cap. Parent-issued VPN codes remain required.',
+                ),
+                trailing: IconButton(
+                  tooltip: 'Configure trust-based autonomy',
+                  onPressed: _configureAutonomy,
+                  icon: const Icon(Icons.settings),
+                ),
+              ),
+            ),
+            _sectionTitle('Recent mood check-ins'),
+            if (_moods.isEmpty)
+              const Text('No mood check-ins have been submitted.')
+            else
+              ..._moods.take(10).map(
+                    (mood) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.mood),
+                      title: Text(mood.mood),
+                      subtitle: Text(
+                        '${DateFormat('MMM d, h:mm a').format(mood.createdAt.toLocal())}'
+                        '${mood.note.isEmpty ? '' : ' · ${mood.note}'}',
+                      ),
+                    ),
+                  ),
+          ],
           const SizedBox(height: 24),
         ],
       ),

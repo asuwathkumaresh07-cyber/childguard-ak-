@@ -48,7 +48,6 @@ class _ProtectionScreenState extends State<ProtectionScreen>
   List<ChildMoodCheckin> _moodCheckins = [];
   List<ChildTemporaryAppUnlock> _appUnlocks = [];
   ChildStreak? _streak;
-  ChildWeeklyInsight? _weeklyInsight;
   List<AppUsageLog> _activityLogs = [];
   String _protectionMode = 'strict';
   Map<String, int> _dailyUsageSeconds = {};
@@ -222,13 +221,18 @@ class _ProtectionScreenState extends State<ProtectionScreen>
       List<ChildMoodCheckin> moodCheckins = [];
       List<ChildTemporaryAppUnlock> appUnlocks = [];
       ChildStreak? streak;
-      ChildWeeklyInsight? weeklyInsight;
       Map<String, int> dailyUsage = {};
       Map<String, int> approvedExtraSeconds = {};
       if (family != null) {
         // Fetches effective blocked domains (custom + categories)
-        blocked = await _family.fetchBlockDomains(family.id);
-        apps = await _family.fetchBlockedAppPackages(family.id);
+        blocked = await _family.fetchChildBlockDomains(
+          familyId: family.id,
+          childId: profile?.id ?? '',
+        );
+        apps = await _family.fetchChildBlockedAppPackages(
+          familyId: family.id,
+          childId: profile?.id ?? '',
+        );
         if (_family.isUsingSupabase && profile != null) {
           activityLogs = await _family.fetchAppUsageLogs(
             familyId: family.id,
@@ -260,8 +264,6 @@ class _ProtectionScreenState extends State<ProtectionScreen>
           );
           streak = await _family.fetchChildStreak(profile.id);
           appUnlocks = await _family.fetchActiveChildAppUnlocks(profile.id);
-          weeklyInsight =
-              await _family.fetchLatestChildWeeklyInsight(profile.id);
           _protectionMode = await _family.fetchChildProtectionMode(
             familyId: family.id,
             childId: profile.id,
@@ -298,7 +300,6 @@ class _ProtectionScreenState extends State<ProtectionScreen>
         _moodCheckins = moodCheckins;
         _appUnlocks = appUnlocks;
         _streak = streak;
-        _weeklyInsight = weeklyInsight;
         _dailyUsageSeconds = dailyUsage;
         _approvedExtraSeconds = approvedExtraSeconds;
         _vpnOn = vpn;
@@ -343,9 +344,15 @@ class _ProtectionScreenState extends State<ProtectionScreen>
     if (family == null) return;
     try {
       await _family.reload();
-      final blocked = await _family.fetchBlockDomains(family.id);
-      final apps = await _family.fetchBlockedAppPackages(family.id);
       final profile = _profile;
+      final blocked = await _family.fetchChildBlockDomains(
+        familyId: family.id,
+        childId: profile?.id ?? '',
+      );
+      final apps = await _family.fetchChildBlockedAppPackages(
+        familyId: family.id,
+        childId: profile?.id ?? '',
+      );
       var limits = _timeLimits;
       var activityLogs = _activityLogs;
       var dailyUsage = _dailyUsageSeconds;
@@ -358,7 +365,6 @@ class _ProtectionScreenState extends State<ProtectionScreen>
       var moodCheckins = _moodCheckins;
       var appUnlocks = _appUnlocks;
       var streak = _streak;
-      var weeklyInsight = _weeklyInsight;
       var protectionMode = _protectionMode;
       if (_family.isUsingSupabase && profile != null) {
         activityLogs = await _family.fetchAppUsageLogs(
@@ -395,7 +401,6 @@ class _ProtectionScreenState extends State<ProtectionScreen>
         );
         streak = await _family.fetchChildStreak(profile.id);
         appUnlocks = await _family.fetchActiveChildAppUnlocks(profile.id);
-        weeklyInsight = await _family.fetchLatestChildWeeklyInsight(profile.id);
         extraSeconds = _approvedExtraTime(extraRequests);
       }
       await _bridge.updateBlockList(blocked);
@@ -424,7 +429,6 @@ class _ProtectionScreenState extends State<ProtectionScreen>
           _moodCheckins = moodCheckins;
           _appUnlocks = appUnlocks;
           _streak = streak;
-          _weeklyInsight = weeklyInsight;
           _protectionMode = protectionMode;
           _dailyUsageSeconds = dailyUsage;
           _approvedExtraSeconds = extraSeconds;
@@ -1197,7 +1201,10 @@ class _ProtectionScreenState extends State<ProtectionScreen>
         if (family == null) {
           throw Exception('Link this Child app to a parent family first.');
         }
-        final domains = await _family.fetchBlockDomains(family.id);
+        final domains = await _family.fetchChildBlockDomains(
+          familyId: family.id,
+          childId: _profile?.id ?? '',
+        );
         await _bridge.updateBlockList(domains);
         await _bridge.startVpn(domains);
       } else {
@@ -1329,13 +1336,16 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      _text('My Activity & Screen Logs', 'मेरी गतिविधि और स्क्रीन लॉग'),
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      _text('My Activity & Screen Logs',
+                          'मेरी गतिविधि और स्क्रीन लॉग'),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     IconButton(
                       onPressed: () => Navigator.pop(ctx),
@@ -1346,6 +1356,15 @@ class _ProtectionScreenState extends State<ProtectionScreen>
               ),
               Expanded(
                 child: CategorizedLogsView(
+                  deviceStatus: _profile == null || _familyModel == null
+                      ? null
+                      : ChildDeviceStatus(
+                          childId: _profile!.id,
+                          familyId: _familyModel!.id,
+                          vpnEnabled: _vpnOn,
+                          usageAccessEnabled: _usageOk,
+                          accessibilityEnabled: _a11yOk,
+                          lastSeenAt: DateTime.now()),
                   appLogs: _activityLogs,
                   childName: _profile?.displayName ?? 'Child',
                 ),
@@ -1387,41 +1406,19 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                       const SizedBox(width: 8),
                       LivePulseBadge(
                         label: _vpnOn ? 'PROTECTED' : 'ATTENTION',
-                        color: _vpnOn ? const Color(0xFF00C853) : const Color(0xFFFF1744),
+                        color: _vpnOn
+                            ? const Color(0xFF00C853)
+                            : const Color(0xFFFF1744),
                       ),
                     ],
                   ),
                   const SizedBox(height: 3),
                   Text(_vpnOn
-                      ? _text('Aegis is guarding your device. Have a great day!',
+                      ? _text(
+                          'Aegis is guarding your device. Have a great day!',
                           'एजिस आपके डिवाइस की रक्षा कर रहा है। आपका दिन शुभ हो!')
                       : _text('Protection needs your parent’s attention.',
                           'सुरक्षा के लिए अपने माता-पिता से संपर्क करें।')),
-                ],
-              ),
-            ),
-            FilledButton.tonal(
-              style: FilledButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-              ),
-              onPressed: () {
-                showLiveAlertBanner(
-                  context: context,
-                  title: _text('Active Alert Demo', 'सक्रिय चेतावनी डेमो'),
-                  message: _text(
-                    'Moving red triangle alert is guarding your device!',
-                    'चलती लाल त्रिकोण चेतावनी आपके डिवाइस की रक्षा कर रही है!',
-                  ),
-                  childName: _profile?.displayName,
-                );
-              },
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.bolt, size: 16, color: Colors.amber),
-                  SizedBox(width: 2),
-                  Text('Test Alert', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
@@ -1461,13 +1458,6 @@ class _ProtectionScreenState extends State<ProtectionScreen>
               leading: const Icon(Icons.local_fire_department_outlined),
               title: Text('${_streak!.currentStreak}-day task streak'),
               subtitle: Text('${_streak!.totalPoints} points earned so far'),
-            ),
-          ),
-        if (_weeklyInsight != null)
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(_weeklyInsight!.summary),
             ),
           ),
         Padding(
@@ -1551,21 +1541,6 @@ class _ProtectionScreenState extends State<ProtectionScreen>
           _text('My profile', 'मेरी प्रोफ़ाइल'),
         ][_selectedSection]),
         actions: [
-          IconButton(
-            tooltip: _text('Test Alert Animation', 'लाइव अलर्ट टेस्ट करें'),
-            onPressed: () {
-              showLiveAlertBanner(
-                context: context,
-                title: _text('Live Security Alert', 'लाइव सुरक्षा चेतावनी'),
-                message: _text(
-                  'Moving red triangle alert notification is active!',
-                  'चलती लाल त्रिकोण चेतावनी सूचना सक्रिय है!',
-                ),
-                childName: _profile?.displayName,
-              );
-            },
-            icon: const Icon(Icons.add_alert_rounded, color: Colors.amber),
-          ),
           IconButton(
             tooltip: _text('Refresh', 'रीफ़्रेश'),
             onPressed: _loading ? null : _syncRules,
@@ -1702,10 +1677,14 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                                     Center(
                                       child: TextButton.icon(
                                         onPressed: _openActivityLogs,
-                                        icon: const Icon(Icons.list_alt_rounded, size: 18),
+                                        icon: const Icon(Icons.list_alt_rounded,
+                                            size: 18),
                                         label: Text(
-                                          _text('View Categorized Logs (Live & Usage)', 'विस्तृत लॉग देखें (लाइव और उपयोग)'),
-                                          style: const TextStyle(fontWeight: FontWeight.w700),
+                                          _text(
+                                              'View Categorized Logs (Live & Usage)',
+                                              'विस्तृत लॉग देखें (लाइव और उपयोग)'),
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w700),
                                         ),
                                       ),
                                     ),

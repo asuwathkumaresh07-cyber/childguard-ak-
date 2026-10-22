@@ -97,24 +97,6 @@ class _ParentAlertsScreenState extends State<ParentAlertsScreen> {
     }
   }
 
-  void _triggerTestAlert() {
-    final firstChild = widget.children.isNotEmpty ? _childName(widget.children.first) : 'Child Device';
-    showLiveAlertBanner(
-      context: context,
-      title: 'Active Protection Alert',
-      message: '$firstChild: protection VPN was turned off!',
-      childName: firstChild,
-      onView: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Reviewing alert for $firstChild'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      },
-    );
-  }
-
   String _childName(FamilyMember child) {
     final name = child.profile?.displayName.trim() ?? '';
     return name.isEmpty ? 'Child' : name;
@@ -151,11 +133,6 @@ class _ParentAlertsScreenState extends State<ParentAlertsScreen> {
       appBar: AppBar(
         title: const Text('Live Security Alerts'),
         actions: [
-          IconButton(
-            tooltip: 'Simulate Live Alert',
-            onPressed: _triggerTestAlert,
-            icon: const Icon(Icons.add_alert_rounded, color: Colors.amber),
-          ),
           IconButton(
             tooltip: 'Refresh alerts',
             onPressed: _load,
@@ -196,21 +173,6 @@ class _ParentAlertsScreenState extends State<ParentAlertsScreen> {
                                       : 'Tap on any alert below to inspect.',
                                   style: Theme.of(context).textTheme.bodySmall,
                                 ),
-                              ],
-                            ),
-                          ),
-                          FilledButton.tonal(
-                            style: FilledButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.symmetric(horizontal: 10),
-                            ),
-                            onPressed: _triggerTestAlert,
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.play_arrow_rounded, size: 16),
-                                SizedBox(width: 2),
-                                Text('Test Alert', style: TextStyle(fontSize: 11)),
                               ],
                             ),
                           ),

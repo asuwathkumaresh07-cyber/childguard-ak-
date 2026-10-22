@@ -154,38 +154,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         familyId: familyId,
                         childId: childMember.profileId,
                         childName: name,
-                        initialTab: 1,
+                        initialTab: 0,
                       ),
                     ),
                   );
                 },
         );
       },
-    );
-  }
-
-  void _simulateLiveAlert() {
-    final firstKid = _children.firstOrNull;
-    final name = firstKid?.profile?.displayName ?? 'Alex';
-    showLiveAlertBanner(
-      context: context,
-      title: 'Active Protection Alert',
-      message: '$name: Protection VPN was turned off!',
-      childName: name,
-      onView: firstKid == null
-          ? null
-          : () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => ChildDetailScreen(
-                    familyId: _familyModel?.id ?? '',
-                    childId: firstKid.profileId,
-                    childName: name,
-                    initialTab: 1,
-                  ),
-                ),
-              );
-            },
     );
   }
 
@@ -237,7 +212,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         familyId: familyId,
                         childId: child.profileId,
                         childName: name,
-                        initialTab: 4,
+                        initialTab: 3,
                       ),
                     ),
                   );
@@ -443,96 +418,96 @@ class _HomeScreenState extends State<HomeScreen> {
     return GlassCard(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.checklist_rounded,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Family setup',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w800),
-                  ),
-                ),
-                if (hasChildren && _family.isUsingSupabase)
-                  const Chip(
-                    avatar: Icon(Icons.check_circle, size: 16),
-                    label: Text('Linked'),
-                    visualDensity: VisualDensity.compact,
-                  )
-                else
-                  const Chip(
-                    avatar: Icon(Icons.tune, size: 16),
-                    label: Text('Setup needed'),
-                    visualDensity: VisualDensity.compact,
-                  ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Complete these steps to get the most from Family Guard.',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 8),
-            _setupStatusRow(
-              icon: hasChildren ? Icons.check_circle : Icons.person_add_alt_1,
-              title: hasChildren
-                  ? '${_children.length} child account${_children.length == 1 ? '' : 's'} linked'
-                  : 'Create your child account',
-              subtitle: hasChildren
-                  ? 'Open a child profile below to manage protection and activity.'
-                  : 'Create it here, then sign in on the child’s device.',
-              complete: hasChildren,
-              trailing: hasChildren
-                  ? null
-                  : TextButton(
-                      onPressed: _createChildAccount,
-                      child: const Text('Create'),
-                    ),
-            ),
-            _setupStatusRow(
-              icon: _family.isUsingSupabase
-                  ? Icons.cloud_done_outlined
-                  : Icons.cloud_off_outlined,
-              title: _family.isUsingSupabase
-                  ? 'Cloud sync is configured'
-                  : 'Using this device only',
-              subtitle: _family.isUsingSupabase
-                  ? 'Family settings and activity use Supabase when the device is online.'
-                  : 'Sign in with a configured Supabase project to sync across devices.',
-              complete: _family.isUsingSupabase,
-            ),
-            _setupStatusRow(
-              icon: pushConfigured
-                  ? Icons.notifications_active_outlined
-                  : Icons.notifications_none_outlined,
-              title: pushConfigured
-                  ? 'Firebase notifications are configured in the app'
-                  : 'Closed-app push alerts need setup',
-              subtitle: pushConfigured
-                  ? 'Server-side FCM credentials are also required for delivery.'
-                  : 'In-app alerts work while Parent is open; Firebase is needed for push.',
-              complete: pushConfigured,
-            ),
-            const Divider(height: 18),
-            const ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.phone_android_rounded),
-              title: Text('Finish device setup in each child profile'),
-              subtitle: Text(
-                'App limits need Usage access and Accessibility. Location is child opt-in and needs background location permission.',
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.checklist_rounded,
+                color: Theme.of(context).colorScheme.primary,
               ),
-              dense: true,
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Family setup',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w800),
+                ),
+              ),
+              if (hasChildren && _family.isUsingSupabase)
+                const Chip(
+                  avatar: Icon(Icons.check_circle, size: 16),
+                  label: Text('Linked'),
+                  visualDensity: VisualDensity.compact,
+                )
+              else
+                const Chip(
+                  avatar: Icon(Icons.tune, size: 16),
+                  label: Text('Setup needed'),
+                  visualDensity: VisualDensity.compact,
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Complete these steps to get the most from Family Guard.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 8),
+          _setupStatusRow(
+            icon: hasChildren ? Icons.check_circle : Icons.person_add_alt_1,
+            title: hasChildren
+                ? '${_children.length} child account${_children.length == 1 ? '' : 's'} linked'
+                : 'Create your child account',
+            subtitle: hasChildren
+                ? 'Open a child profile below to manage protection and activity.'
+                : 'Create it here, then sign in on the child’s device.',
+            complete: hasChildren,
+            trailing: hasChildren
+                ? null
+                : TextButton(
+                    onPressed: _createChildAccount,
+                    child: const Text('Create'),
+                  ),
+          ),
+          _setupStatusRow(
+            icon: _family.isUsingSupabase
+                ? Icons.cloud_done_outlined
+                : Icons.cloud_off_outlined,
+            title: _family.isUsingSupabase
+                ? 'Cloud sync is configured'
+                : 'Using this device only',
+            subtitle: _family.isUsingSupabase
+                ? 'Family settings and activity use Supabase when the device is online.'
+                : 'Sign in with a configured Supabase project to sync across devices.',
+            complete: _family.isUsingSupabase,
+          ),
+          _setupStatusRow(
+            icon: pushConfigured
+                ? Icons.notifications_active_outlined
+                : Icons.notifications_none_outlined,
+            title: pushConfigured
+                ? 'Firebase notifications are configured in the app'
+                : 'Closed-app push alerts need setup',
+            subtitle: pushConfigured
+                ? 'Server-side FCM credentials are also required for delivery.'
+                : 'In-app alerts work while Parent is open; Firebase is needed for push.',
+            complete: pushConfigured,
+          ),
+          const Divider(height: 18),
+          const ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.phone_android_rounded),
+            title: Text('Finish device setup in each child profile'),
+            subtitle: Text(
+              'App limits need Usage access and Accessibility. Location is child opt-in and needs background location permission.',
             ),
-          ],
-        ),
+            dense: true,
+          ),
+        ],
+      ),
     );
   }
 
@@ -563,11 +538,6 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('Family Dashboard'),
         actions: [
-          IconButton(
-            tooltip: 'Test Live Alert Animation',
-            onPressed: _simulateLiveAlert,
-            icon: const Icon(Icons.add_alert_rounded, color: Colors.amber),
-          ),
           IconButton(
             tooltip: 'Alerts',
             onPressed: _familyModel == null ? null : _openAlerts,
@@ -632,7 +602,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             children: [
                               GuardianCharacter(
                                 size: 66,
-                                mood: _newAlertCount > 0 ? GuardianMood.alert : GuardianMood.safe,
+                                mood: _newAlertCount > 0
+                                    ? GuardianMood.alert
+                                    : GuardianMood.safe,
                               ),
                               const SizedBox(width: 14),
                               Expanded(
@@ -648,14 +620,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 .textTheme
                                                 .titleLarge
                                                 ?.copyWith(
-                                                    fontWeight: FontWeight.w800),
+                                                    fontWeight:
+                                                        FontWeight.w800),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                         const SizedBox(width: 8),
                                         LivePulseBadge(
-                                          label: _newAlertCount > 0 ? 'ALERT' : 'LIVE',
+                                          label: _newAlertCount > 0
+                                              ? 'ALERT'
+                                              : 'LIVE',
                                           color: _newAlertCount > 0
                                               ? const Color(0xFFFF1744)
                                               : const Color(0xFF00C853),
@@ -672,21 +647,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                             color: const Color(0xFF597277),
                                           ),
                                     ),
-                                  ],
-                                ),
-                              ),
-                              FilledButton.tonal(
-                                style: FilledButton.styleFrom(
-                                  visualDensity: VisualDensity.compact,
-                                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                                ),
-                                onPressed: _simulateLiveAlert,
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.bolt, size: 16, color: Colors.amber),
-                                    SizedBox(width: 2),
-                                    Text('Test Alert', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                                   ],
                                 ),
                               ),
@@ -725,25 +685,24 @@ class _HomeScreenState extends State<HomeScreen> {
                           GlassCard(
                             padding: const EdgeInsets.all(24),
                             child: Column(
-                                children: [
-                                  Icon(Icons.phone_android,
-                                      size: 48, color: Colors.grey.shade400),
-                                  const SizedBox(height: 12),
-                                  const Text(
-                                    'No child accounts linked yet.',
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  const Text(
-                                    'Create your child’s account here. It will connect to your Family Guard shield automatically.',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                        fontSize: 13, color: Colors.grey),
-                                  ),
-                                ],
+                              children: [
+                                Icon(Icons.phone_android,
+                                    size: 48, color: Colors.grey.shade400),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'No child accounts linked yet.',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
-                            )
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'Create your child’s account here. It will connect to your Family Guard shield automatically.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                      fontSize: 13, color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          )
                         else
                           ..._children.map((m) {
                             final name = m.profile?.displayName.isNotEmpty ==
@@ -784,11 +743,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.warning_amber_rounded, size: 13, color: Colors.red),
+                    const Icon(Icons.warning_amber_rounded,
+                        size: 13, color: Colors.red),
                     const SizedBox(width: 4),
                     Text(
                       '$_newAlertCount Alert${_newAlertCount > 1 ? 's' : ''}',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red.shade900),
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red.shade900),
                     ),
                   ],
                 ),
@@ -807,8 +770,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   backgroundColor: const Color(0xFFE0F2F1),
                   child: Icon(Icons.security, color: Colors.teal.shade800),
                 ),
-                title: const Text('Web Shield & Category Filters', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                subtitle: const Text('Block adult sites, malicious domains & 9 categories'),
+                title: const Text('Web Shield & Category Filters',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                subtitle: const Text(
+                    'Block adult sites, malicious domains & 9 categories'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   if (familyId.isNotEmpty) {
@@ -826,10 +792,14 @@ class _HomeScreenState extends State<HomeScreen> {
               ListTile(
                 leading: CircleAvatar(
                   backgroundColor: const Color(0xFFE8EAF6),
-                  child: Icon(Icons.apps_rounded, color: Colors.indigo.shade700),
+                  child:
+                      Icon(Icons.apps_rounded, color: Colors.indigo.shade700),
                 ),
-                title: const Text('App Guard & Time Limits', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                subtitle: const Text('Lock distracting games & set daily minute limits'),
+                title: const Text('App Guard & Time Limits',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                subtitle: const Text(
+                    'Lock distracting games & set daily minute limits'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   if (familyId.isNotEmpty) {
@@ -847,28 +817,36 @@ class _HomeScreenState extends State<HomeScreen> {
               ListTile(
                 leading: CircleAvatar(
                   backgroundColor: const Color(0xFFFFEBEE),
-                  child: Icon(Icons.warning_rounded, color: Colors.red.shade700),
+                  child:
+                      Icon(Icons.warning_rounded, color: Colors.red.shade700),
                 ),
                 title: Row(
                   children: [
-                    const Text('Live Security & Tamper Alerts', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                    const Text('Live Security & Tamper Alerts',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 14)),
                     if (_newAlertCount > 0) ...[
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 1),
                         decoration: BoxDecoration(
                           color: Colors.red,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           '$_newAlertCount',
-                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],
                   ],
                 ),
-                subtitle: const Text('Real-time alerts with animated moving red triangle'),
+                subtitle: const Text(
+                    'Real-time alerts with animated moving red triangle'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.of(context).push(
@@ -887,10 +865,14 @@ class _HomeScreenState extends State<HomeScreen> {
               ListTile(
                 leading: CircleAvatar(
                   backgroundColor: const Color(0xFFF3E5F5),
-                  child: Icon(Icons.checklist_rounded, color: Colors.purple.shade700),
+                  child: Icon(Icons.checklist_rounded,
+                      color: Colors.purple.shade700),
                 ),
-                title: const Text('Tasks, Chores & Homework', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                subtitle: const Text('Photo proof verification, streaks & screen time credits'),
+                title: const Text('Tasks, Chores & Homework',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                subtitle: const Text(
+                    'Photo proof verification, streaks & screen time credits'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   if (firstKid != null) {
@@ -916,8 +898,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   backgroundColor: const Color(0xFFE0F7FA),
                   child: Icon(Icons.radar_rounded, color: Colors.cyan.shade800),
                 ),
-                title: const Text('GPS Sentinel & Safe Zones', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                subtitle: const Text('Interactive OpenStreetMap tracking & geofence perimeter alerts'),
+                title: const Text('GPS Sentinel & Safe Zones',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                subtitle: const Text(
+                    'Interactive OpenStreetMap tracking & geofence perimeter alerts'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   if (firstKid != null) {
@@ -927,7 +912,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           familyId: familyId,
                           childId: firstKid.profileId,
                           childName: firstKid.profile?.displayName ?? 'Child',
-                          initialTab: 4, // Tab 4 is Location & Zones
+                          initialTab: 3, // Location & Zones
                         ),
                       ),
                     );
@@ -938,14 +923,18 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const Divider(height: 1),
 
-              // 6. Categorized Logs (Live stream + Daily/Hourly/Monthly)
+              // 6. Categorized Logs (Live stream + Daily/Hourly)
               ListTile(
                 leading: CircleAvatar(
                   backgroundColor: const Color(0xFFFFF3E0),
-                  child: Icon(Icons.history_rounded, color: Colors.orange.shade800),
+                  child: Icon(Icons.history_rounded,
+                      color: Colors.orange.shade800),
                 ),
-                title: const Text('Categorized Activity Logs', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                subtitle: const Text('Live event stream + Daily, Hourly, and Monthly usage breakdown'),
+                title: const Text('Categorized Activity Logs',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                subtitle: const Text(
+                    'Live events and daily or hourly usage graphs'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   if (firstKid != null) {
@@ -955,7 +944,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           familyId: familyId,
                           childId: firstKid.profileId,
                           childName: firstKid.profile?.displayName ?? 'Child',
-                          initialTab: 1, // Tab 1 is Categorized Logs
+                          initialTab: 0, // Categorized Logs
                         ),
                       ),
                     );
@@ -978,140 +967,128 @@ class _HomeScreenState extends State<HomeScreen> {
       margin: const EdgeInsets.symmetric(vertical: 6),
       padding: const EdgeInsets.all(14.0),
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: const Color(0xFFE0F2F1),
+                child: Icon(Icons.child_care_rounded,
+                    color: Theme.of(context).colorScheme.primary, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 15)),
+                    const SizedBox(height: 2),
+                    const LivePulseBadge(
+                      label: 'PROTECTED',
+                      color: Color(0xFF00C853),
+                    ),
+                  ],
+                ),
+              ),
+              FilledButton.tonal(
+                style: FilledButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                ),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => ChildDetailScreen(
+                        familyId: familyId,
+                        childId: member.profileId,
+                        childName: name,
+                      ),
+                    ),
+                  );
+                },
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Open', style: TextStyle(fontSize: 12)),
+                    Icon(Icons.chevron_right, size: 16),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Quick feature shortcut pills
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
               children: [
-                CircleAvatar(
-                  radius: 22,
-                  backgroundColor: const Color(0xFFE0F2F1),
-                  child: Icon(Icons.child_care_rounded, color: Theme.of(context).colorScheme.primary, size: 24),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                      const SizedBox(height: 2),
-                      const LivePulseBadge(
-                        label: 'PROTECTED',
-                        color: Color(0xFF00C853),
+                _buildShortcutChip(
+                  icon: Icons.history_rounded,
+                  label: 'Categorized Logs',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => ChildDetailScreen(
+                        familyId: familyId,
+                        childId: member.profileId,
+                        childName: name,
+                        initialTab: 0,
                       ),
-                    ],
+                    ),
                   ),
                 ),
-                FilledButton.tonal(
-                  style: FilledButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                  ),
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => ChildDetailScreen(
-                          familyId: familyId,
-                          childId: member.profileId,
-                          childName: name,
-                        ),
+                const SizedBox(width: 6),
+                _buildShortcutChip(
+                  icon: Icons.public,
+                  label: 'Web Shield',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => ChildDetailScreen(
+                        familyId: familyId,
+                        childId: member.profileId,
+                        childName: name,
+                        initialTab: 1,
                       ),
-                    );
-                  },
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('Open', style: TextStyle(fontSize: 12)),
-                      Icon(Icons.chevron_right, size: 16),
-                    ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                _buildShortcutChip(
+                  icon: Icons.apps,
+                  label: 'Limits',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => ChildDetailScreen(
+                        familyId: familyId,
+                        childId: member.profileId,
+                        childName: name,
+                        initialTab: 2,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                _buildShortcutChip(
+                  icon: Icons.radar_rounded,
+                  label: 'Radar Map',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => ChildDetailScreen(
+                        familyId: familyId,
+                        childId: member.profileId,
+                        childName: name,
+                        initialTab: 3,
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            // Quick feature shortcut pills
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildShortcutChip(
-                    icon: Icons.bar_chart_rounded,
-                    label: 'Graphs',
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => ChildDetailScreen(
-                          familyId: familyId,
-                          childId: member.profileId,
-                          childName: name,
-                          initialTab: 0,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  _buildShortcutChip(
-                    icon: Icons.history_rounded,
-                    label: 'Categorized Logs',
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => ChildDetailScreen(
-                          familyId: familyId,
-                          childId: member.profileId,
-                          childName: name,
-                          initialTab: 1,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  _buildShortcutChip(
-                    icon: Icons.public,
-                    label: 'Web Shield',
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => ChildDetailScreen(
-                          familyId: familyId,
-                          childId: member.profileId,
-                          childName: name,
-                          initialTab: 2,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  _buildShortcutChip(
-                    icon: Icons.apps,
-                    label: 'Limits',
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => ChildDetailScreen(
-                          familyId: familyId,
-                          childId: member.profileId,
-                          childName: name,
-                          initialTab: 3,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  _buildShortcutChip(
-                    icon: Icons.radar_rounded,
-                    label: 'Radar Map',
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => ChildDetailScreen(
-                          familyId: familyId,
-                          childId: member.profileId,
-                          childName: name,
-                          initialTab: 4,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1121,10 +1098,13 @@ class _HomeScreenState extends State<HomeScreen> {
     required VoidCallback onTap,
   }) {
     return ActionChip(
-      avatar: Icon(icon, size: 14, color: Theme.of(context).colorScheme.primary),
-      label: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+      avatar:
+          Icon(icon, size: 14, color: Theme.of(context).colorScheme.primary),
+      label: Text(label,
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
       backgroundColor: Colors.white.withValues(alpha: 0.8),
-      side: BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25)),
+      side: BorderSide(
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25)),
       onPressed: onTap,
       visualDensity: VisualDensity.compact,
       padding: EdgeInsets.zero,
@@ -1200,7 +1180,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             familyId: familyId,
                             childId: child.profileId,
                             childName: name,
-                            initialTab: 3,
+                            initialTab: 2,
                           ),
                         ),
                       );

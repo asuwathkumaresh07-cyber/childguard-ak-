@@ -775,6 +775,67 @@ class SupabaseService {
     return {...fromCategories, ...customDomains}.toList()..sort();
   }
 
+  Future<List<String>> fetchChildBlockedDomainOverrides({
+    required String familyId,
+    required String childId,
+  }) async {
+    final c = client;
+    if (c == null) throw Exception('Supabase is not connected.');
+    final domainRows = await c
+        .from('child_blocked_domains')
+        .select('domain')
+        .eq('family_id', familyId)
+        .eq('child_id', childId);
+    final categoryRows = await c
+        .from('child_blocked_categories')
+        .select('category')
+        .eq('family_id', familyId)
+        .eq('child_id', childId);
+    final categories = (categoryRows as List)
+        .map((row) => BlockCategoryX.fromId(row['category'] as String))
+        .whereType<BlockCategory>();
+    return {
+      ...CategoryDomainLists.domainsFor(categories),
+      ...(domainRows as List).map(
+        (row) => (row['domain'] as String).toLowerCase(),
+      ),
+    }.toList()
+      ..sort();
+  }
+
+  Future<void> addChildBlockedDomain({
+    required String familyId,
+    required String childId,
+    required String domain,
+  }) async {
+    final c = client;
+    final uid = currentAuthUser?.id;
+    if (c == null || uid == null) throw Exception('Not signed in.');
+    final cleaned = _normalizeDomain(domain);
+    if (cleaned.isEmpty) throw Exception('Invalid domain.');
+    await c.from('child_blocked_domains').upsert({
+      'family_id': familyId,
+      'child_id': childId,
+      'domain': cleaned,
+      'created_by': uid,
+    }, onConflict: 'family_id,child_id,domain');
+  }
+
+  Future<void> removeChildBlockedDomain({
+    required String familyId,
+    required String childId,
+    required String domain,
+  }) async {
+    final c = client;
+    if (c == null) throw Exception('Supabase is not connected.');
+    await c
+        .from('child_blocked_domains')
+        .delete()
+        .eq('family_id', familyId)
+        .eq('child_id', childId)
+        .eq('domain', _normalizeDomain(domain));
+  }
+
   // ---------------------------------------------------------------------------
   // App Blocking
   // ---------------------------------------------------------------------------
@@ -802,6 +863,53 @@ class SupabaseService {
   Future<List<String>> fetchBlockedAppPackages(String familyId) async {
     final apps = await fetchBlockedApps(familyId);
     return apps.map((a) => a.packageName).toList();
+  }
+
+  Future<List<String>> fetchChildBlockedAppPackages({
+    required String familyId,
+    required String childId,
+  }) async {
+    final c = client;
+    if (c == null) throw Exception('Supabase is not connected.');
+    final rows = await c
+        .from('child_blocked_apps')
+        .select('package_name')
+        .eq('family_id', familyId)
+        .eq('child_id', childId);
+    return (rows as List).map((row) => row['package_name'] as String).toList();
+  }
+
+  Future<void> addChildBlockedApp({
+    required String familyId,
+    required String childId,
+    required String packageName,
+    required String appLabel,
+  }) async {
+    final c = client;
+    if (c == null) throw Exception('Supabase is not connected.');
+    final package = packageName.trim();
+    if (package.isEmpty) throw Exception('Invalid package name.');
+    await c.from('child_blocked_apps').upsert({
+      'family_id': familyId,
+      'child_id': childId,
+      'package_name': package,
+      'app_label': appLabel.trim().isEmpty ? package : appLabel.trim(),
+    }, onConflict: 'family_id,child_id,package_name');
+  }
+
+  Future<void> removeChildBlockedApp({
+    required String familyId,
+    required String childId,
+    required String packageName,
+  }) async {
+    final c = client;
+    if (c == null) throw Exception('Supabase is not connected.');
+    await c
+        .from('child_blocked_apps')
+        .delete()
+        .eq('family_id', familyId)
+        .eq('child_id', childId)
+        .eq('package_name', packageName);
   }
 
   Future<void> addBlockedApp({
@@ -1726,6 +1834,83 @@ class SupabaseService {
     };
   }
 
+  Future<Map<String, String>> fetchChildAppCategoryOverrides({
+    required String familyId,
+    required String childId,
+  }) async {
+    final c = client;
+    if (c == null) throw Exception('Supabase is not connected.');
+    final rows = await c
+        .from('child_app_category_overrides')
+        .select('package_name, category')
+        .eq('family_id', familyId)
+        .eq('child_id', childId);
+    return {
+      for (final row in rows as List)
+        row['package_name'] as String: row['category'] as String,
+    };
+  }
+
+  Future<void> saveChildAppCategoryOverride({
+    required String familyId,
+    required String childId,
+    required String packageName,
+    required String category,
+  }) async {
+    final c = client;
+    if (c == null) throw Exception('Supabase is not connected.');
+    const allowed = {
+      'educational',
+      'creative',
+      'social',
+      'entertainment',
+      'unproductive',
+    };
+    if (!allowed.contains(category)) {
+      throw ArgumentError.value(category, 'category');
+    }
+    await c.from('child_app_category_overrides').upsert({
+      'family_id': familyId,
+      'child_id': childId,
+      'package_name': packageName,
+      'category': category,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    }, onConflict: 'family_id,child_id,package_name');
+  }
+
+  Future<List<String>> fetchChildBlockedCategories({
+    required String familyId,
+    required String childId,
+  }) async {
+    final c = client;
+    if (c == null) throw Exception('Supabase is not connected.');
+    final rows = await c
+        .from('child_blocked_categories')
+        .select('category')
+        .eq('family_id', familyId)
+        .eq('child_id', childId);
+    return (rows as List).map((row) => row['category'] as String).toList();
+  }
+
+  Future<void> setChildBlockedCategories({
+    required String familyId,
+    required String childId,
+    required List<String> categoryIds,
+  }) async {
+    final c = client;
+    final uid = currentAuthUser?.id;
+    if (c == null || uid == null) throw Exception('Not signed in.');
+    final allowed = BlockCategory.values.map((category) => category.id).toSet();
+    if (categoryIds.toSet().difference(allowed).isNotEmpty) {
+      throw ArgumentError.value(categoryIds, 'categoryIds');
+    }
+    await c.rpc('set_child_blocked_categories', params: {
+      'target_family_id': familyId,
+      'target_child_id': childId,
+      'category_ids': categoryIds.toSet().toList(),
+    });
+  }
+
   // ---------------------------------------------------------------------------
   // Realtime Subscriptions
   // ---------------------------------------------------------------------------
@@ -1767,6 +1952,39 @@ class SupabaseService {
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'blocked_apps',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'family_id',
+            value: familyId,
+          ),
+          callback: (_) => onRulesChanged(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'child_blocked_domains',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'family_id',
+            value: familyId,
+          ),
+          callback: (_) => onRulesChanged(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'child_blocked_apps',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'family_id',
+            value: familyId,
+          ),
+          callback: (_) => onRulesChanged(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'child_blocked_categories',
           filter: PostgresChangeFilter(
             type: PostgresChangeFilterType.eq,
             column: 'family_id',

@@ -38,3 +38,6 @@ migrate_working_dir/
 # Big binaries / APKs (GitHub limits files to 100MB)
 *.apk
 *.aab
+
+# Local Supabase CLI project metadata
+supabase/.temp/
