@@ -257,7 +257,8 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
         label: const Text('Assign task'),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const AppLoadingView(
+              message: 'Loading tasks', icon: Icons.checklist_outlined)
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(
@@ -415,7 +416,9 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                       return const Text(userFacingError);
                     }
                     if (!snapshot.hasData) {
-                      return const LinearProgressIndicator();
+                      return const AppLoadingView(
+                          message: 'Loading task photo',
+                          icon: Icons.checklist_outlined);
                     }
                     return ClipRRect(
                       borderRadius: BorderRadius.circular(14),

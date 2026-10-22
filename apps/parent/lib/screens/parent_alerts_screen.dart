@@ -142,7 +142,9 @@ class _ParentAlertsScreenState extends State<ParentAlertsScreen> {
       ),
       body: AmbientBackground(
         child: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? const AppLoadingView(
+                message: 'Loading device alerts',
+                icon: Icons.notifications_outlined)
             : RefreshIndicator(
                 onRefresh: _load,
                 child: ListView(

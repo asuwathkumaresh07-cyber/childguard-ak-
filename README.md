@@ -15,6 +15,11 @@ animated icons come from `not_static_icons`; library effects use `flutter_animat
 Background waves, card shimmer, ripple rings, and the robot mascot are removed.
 Motion respects the device's reduced-animation setting.
 
+Loading screens use a floating 3D-style blue icon with perspective rotation,
+depth, and drag-to-tilt interaction. Compact versions appear in sign-in and
+approval buttons. Loaders follow real operation state and do not add artificial
+delays or simulated progress.
+
 [Narrow-phone layout preview](artifacts/activity-preview.png) uses sample activity
 to show the updated graph and VPN status layout.
 

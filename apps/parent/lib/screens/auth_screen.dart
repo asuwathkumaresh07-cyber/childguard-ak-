@@ -205,7 +205,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     ? const SizedBox(
                         height: 20,
                         width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: AppLoadingIndicator(size: 20),
                       )
                     : Text(_isSignUp
                         ? 'Create Parent Account'

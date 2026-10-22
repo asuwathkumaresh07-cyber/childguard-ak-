@@ -1597,7 +1597,11 @@ class _ProtectionScreenState extends State<ProtectionScreen>
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? AppLoadingView(
+              message: _text(
+                  'Loading your protection', 'आपकी सुरक्षा लोड हो रही है'),
+              detail: _text('Getting your latest settings.',
+                  'आपकी नवीनतम सेटिंग मिल रही हैं।'))
           : _error != null
               ? Center(
                   child: Padding(
@@ -1894,10 +1898,8 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                                               ? const SizedBox(
                                                   width: 20,
                                                   height: 20,
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                    strokeWidth: 2,
-                                                  ),
+                                                  child: AppLoadingIndicator(
+                                                      size: 20),
                                                 )
                                               : Text(
                                                   'Enter parent approval',

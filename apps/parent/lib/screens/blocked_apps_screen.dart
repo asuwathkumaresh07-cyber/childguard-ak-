@@ -100,7 +100,8 @@ class _BlockedAppsScreenState extends State<BlockedAppsScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Blocked apps')),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const AppLoadingView(
+              message: 'Loading app controls', icon: Icons.apps_rounded)
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [

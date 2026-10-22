@@ -11,6 +11,7 @@ export 'src/family_service.dart';
 export 'src/glass_card.dart';
 export 'src/app_palette.dart';
 export 'src/live_icon.dart';
+export 'src/app_loading.dart';
 export 'src/live_alert_banner.dart';
 export 'src/local_store.dart';
 export 'src/models.dart';

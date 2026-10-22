@@ -125,7 +125,8 @@ class _BlockListScreenState extends State<BlockListScreen>
         ),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const AppLoadingView(
+              message: 'Loading website rules', icon: Icons.public)
           : TabBarView(
               controller: _tabs,
               children: [

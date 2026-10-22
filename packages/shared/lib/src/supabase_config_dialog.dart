@@ -1,3 +1,4 @@
+import 'app_loading.dart';
 import 'package:flutter/material.dart';
 
 import 'config.dart';
@@ -203,7 +204,7 @@ class _SupabaseConfigDialogState extends State<SupabaseConfigDialog> {
               ? const SizedBox(
                   width: 18,
                   height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: AppLoadingIndicator(size: 20),
                 )
               : const Text('Save & Connect'),
         ),

@@ -648,7 +648,13 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) {
+      return AppLoadingView(
+          message: widget.showOther
+              ? 'Loading child settings'
+              : 'Loading location and zones',
+          icon: widget.showOther ? Icons.settings : Icons.location_on_outlined);
+    }
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(

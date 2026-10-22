@@ -425,7 +425,9 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
       ),
       body: AmbientBackground(
         child: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? AppLoadingView(
+                message: 'Loading ${widget.childName}’s activity',
+                icon: Icons.history_rounded)
             : Column(
                 children: [
                   if (_loadError != null)

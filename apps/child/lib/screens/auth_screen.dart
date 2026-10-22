@@ -127,7 +127,7 @@ class _ChildAuthScreenState extends State<ChildAuthScreen> {
                     ? const SizedBox(
                         height: 20,
                         width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: AppLoadingIndicator(size: 20),
                       )
                     : const Text('Sign in'),
               ),

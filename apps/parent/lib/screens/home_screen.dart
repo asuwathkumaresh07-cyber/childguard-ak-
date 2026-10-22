@@ -548,7 +548,9 @@ class _HomeScreenState extends State<HomeScreen> {
         label: const Text('Create child'),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const AppLoadingView(
+              message: 'Loading your family',
+              detail: 'Getting the latest device updates.')
           : _error != null
               ? Center(
                   child: Padding(
