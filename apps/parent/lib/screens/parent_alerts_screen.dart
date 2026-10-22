@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared/shared.dart';
 
-import '../widgets/glass_card.dart';
 import '../widgets/user_error.dart';
 
 class ParentAlertsScreen extends StatefulWidget {
@@ -231,40 +230,32 @@ class _ParentAlertsScreenState extends State<ParentAlertsScreen> {
                         ),
                       ),
                     if (_alerts.isEmpty && _error == null)
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(28),
-                          child: Column(
-                            children: [
-                              const GuardianCharacter(size: 72, mood: GuardianMood.happy),
-                              const SizedBox(height: 12),
-                              const Text(
-                                'You’re all caught up!',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Protection status changes and geofence alerts will appear here in real time.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                              ),
-                            ],
-                          ),
+                      GlassCard(
+                        padding: const EdgeInsets.all(28),
+                        child: Column(
+                          children: [
+                            const GuardianCharacter(size: 72, mood: GuardianMood.happy),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'You’re all caught up!',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Protection status changes and geofence alerts will appear here in real time.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                            ),
+                          ],
                         ),
                       )
                     else
                       ..._alerts.map(
-                        (alert) => Card(
-                          margin: const EdgeInsets.symmetric(vertical: 4),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            side: alert.isCritical
-                                ? BorderSide(color: Colors.red.withValues(alpha: 0.35), width: 1.5)
-                                : BorderSide.none,
-                          ),
-                          color: alert.isCritical
-                              ? (Theme.of(context).brightness == Brightness.dark ? const Color(0xFF2E191C) : const Color(0xFFFFF4F4))
-                              : null,
+                        (alert) => GlassCard(
+                          margin: const EdgeInsets.symmetric(vertical: 5),
+                          accentColor: alert.isCritical ? const Color(0xFFFF1744) : const Color(0xFF0066FF),
+                          showShimmer: alert.isCritical,
+                          padding: const EdgeInsets.all(4),
                           child: ListTile(
                             leading: alert.isCritical
                                 ? const AnimatedAlertTriangle(

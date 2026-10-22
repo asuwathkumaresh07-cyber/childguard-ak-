@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import 'package:shared/shared.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../widgets/glass_card.dart';
 import '../widgets/location_radar.dart';
 import '../widgets/user_error.dart';
 

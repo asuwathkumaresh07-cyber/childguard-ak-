@@ -9,7 +9,6 @@ import 'child_detail_screen.dart';
 import 'child_tasks_screen.dart';
 import 'parent_alerts_screen.dart';
 import '../services/parent_push_service.dart';
-import '../widgets/glass_card.dart';
 import '../widgets/user_error.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -441,10 +440,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildSetupCard() {
     final hasChildren = _children.isNotEmpty;
     final pushConfigured = ParentPushService.isInitialized;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
-        child: Column(
+    return GlassCard(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -535,7 +533,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-      ),
     );
   }
 
@@ -630,6 +627,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       padding: const EdgeInsets.all(16),
                       children: [
                         GlassCard(
+                          showShimmer: true,
                           child: Row(
                             children: [
                               GuardianCharacter(
@@ -641,13 +639,28 @@ class _HomeScreenState extends State<HomeScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      'Hi, ${_profile?.displayName ?? "Parent"}',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleLarge
-                                          ?.copyWith(
-                                              fontWeight: FontWeight.w800),
+                                    Row(
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            'Hi, ${_profile?.displayName ?? "Parent"}',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleLarge
+                                                ?.copyWith(
+                                                    fontWeight: FontWeight.w800),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        LivePulseBadge(
+                                          label: _newAlertCount > 0 ? 'ALERT' : 'LIVE',
+                                          color: _newAlertCount > 0
+                                              ? const Color(0xFFFF1744)
+                                              : const Color(0xFF00C853),
+                                        ),
+                                      ],
                                     ),
                                     const SizedBox(height: 3),
                                     Text(
@@ -709,10 +722,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(height: 8),
                         if (_children.isEmpty)
-                          Card(
-                            child: Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: Column(
+                          GlassCard(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
                                 children: [
                                   Icon(Icons.phone_android,
                                       size: 48, color: Colors.grey.shade400),
@@ -730,9 +742,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                         fontSize: 13, color: Colors.grey),
                                   ),
                                 ],
-                              ),
-                            ),
-                          )
+                                ),
+                            )
                         else
                           ..._children.map((m) {
                             final name = m.profile?.displayName.isNotEmpty ==
@@ -785,8 +796,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         const SizedBox(height: 8),
-        Card(
-          elevation: 0,
+        GlassCard(
+          showShimmer: true,
+          padding: const EdgeInsets.symmetric(vertical: 8),
           child: Column(
             children: [
               // 1. Web Shield
@@ -962,12 +974,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildChildOverviewCard(FamilyMember member, String name) {
     final familyId = _familyModel?.id ?? '';
 
-    return Card(
+    return GlassCard(
       margin: const EdgeInsets.symmetric(vertical: 6),
-      elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
+      padding: const EdgeInsets.all(14.0),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -984,19 +994,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                       const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF2E7D32),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          const Text('Device Protected', style: TextStyle(fontSize: 12, color: Color(0xFF2E7D32), fontWeight: FontWeight.w600)),
-                        ],
+                      const LivePulseBadge(
+                        label: 'PROTECTED',
+                        color: Color(0xFF00C853),
                       ),
                     ],
                   ),
@@ -1112,7 +1112,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-      ),
     );
   }
 
@@ -1122,8 +1121,10 @@ class _HomeScreenState extends State<HomeScreen> {
     required VoidCallback onTap,
   }) {
     return ActionChip(
-      avatar: Icon(icon, size: 14),
-      label: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+      avatar: Icon(icon, size: 14, color: Theme.of(context).colorScheme.primary),
+      label: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+      backgroundColor: Colors.white.withValues(alpha: 0.8),
+      side: BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25)),
       onPressed: onTap,
       visualDensity: VisualDensity.compact,
       padding: EdgeInsets.zero,

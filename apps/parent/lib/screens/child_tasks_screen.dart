@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared/shared.dart';
 
-import '../widgets/glass_card.dart';
 import '../widgets/user_error.dart';
 
 class ChildTasksScreen extends StatefulWidget {

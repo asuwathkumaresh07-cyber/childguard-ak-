@@ -7,7 +7,6 @@ import 'package:shared/shared.dart';
 
 import 'child_tasks_screen.dart';
 import 'child_plans_screen.dart';
-import '../widgets/glass_card.dart';
 import '../widgets/user_error.dart';
 
 class ChildDetailScreen extends StatefulWidget {
@@ -1009,14 +1008,12 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Protection mode',
+        GlassCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Protection mode',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
@@ -1045,7 +1042,6 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                 ),
               ],
             ),
-          ),
         ),
         if (_protectionMode == 'friendly') ...[
           const SizedBox(height: 12),
@@ -1091,14 +1087,12 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                 ),
         ],
         const SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Protection controls',
+        GlassCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Protection controls',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 6),
@@ -1124,17 +1118,14 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                 ),
               ],
             ),
-          ),
         ),
         const SizedBox(height: 16),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Child device protection status',
+        GlassCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Child device protection status',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
@@ -1184,7 +1175,6 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                       ),
               ],
             ),
-          ),
         ),
         const SizedBox(height: 16),
         Row(

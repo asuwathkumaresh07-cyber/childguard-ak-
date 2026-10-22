@@ -1305,40 +1305,127 @@ class _ProtectionScreenState extends State<ProtectionScreen>
         ),
       );
 
-  Widget _buildHomeHeader(BuildContext context) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
+  void _openActivityLogs() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => FractionallySizedBox(
+        heightFactor: 0.88,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(ctx).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
             children: [
-              GuardianCharacter(
-                size: 60,
-                mood: _vpnOn ? GuardianMood.safe : GuardianMood.alert,
+              Container(
+                margin: const EdgeInsets.only(top: 10, bottom: 6),
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '${_text('Hi', 'नमस्ते')} ${_profile?.displayName ?? _text('there', 'दोस्त')}!',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w800),
+                      _text('My Activity & Screen Logs', 'मेरी गतिविधि और स्क्रीन लॉग'),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
-                    const SizedBox(height: 3),
-                    Text(_vpnOn
-                        ? _text('Aegis is guarding your device. Have a great day!',
-                            'एजिस आपके डिवाइस की रक्षा कर रहा है। आपका दिन शुभ हो!')
-                        : _text('Protection needs your parent’s attention.',
-                            'सुरक्षा के लिए अपने माता-पिता से संपर्क करें।')),
+                    IconButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      icon: const Icon(Icons.close),
+                    ),
                   ],
+                ),
+              ),
+              Expanded(
+                child: CategorizedLogsView(
+                  appLogs: _activityLogs,
+                  childName: _profile?.displayName ?? 'Child',
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHomeHeader(BuildContext context) => GlassCard(
+        showShimmer: true,
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            GuardianCharacter(
+              size: 60,
+              mood: _vpnOn ? GuardianMood.safe : GuardianMood.alert,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          '${_text('Hi', 'नमस्ते')} ${_profile?.displayName ?? _text('there', 'दोस्त')}!',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      LivePulseBadge(
+                        label: _vpnOn ? 'PROTECTED' : 'ATTENTION',
+                        color: _vpnOn ? const Color(0xFF00C853) : const Color(0xFFFF1744),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(_vpnOn
+                      ? _text('Aegis is guarding your device. Have a great day!',
+                          'एजिस आपके डिवाइस की रक्षा कर रहा है। आपका दिन शुभ हो!')
+                      : _text('Protection needs your parent’s attention.',
+                          'सुरक्षा के लिए अपने माता-पिता से संपर्क करें।')),
+                ],
+              ),
+            ),
+            FilledButton.tonal(
+              style: FilledButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+              ),
+              onPressed: () {
+                showLiveAlertBanner(
+                  context: context,
+                  title: _text('Active Alert Demo', 'सक्रिय चेतावनी डेमो'),
+                  message: _text(
+                    'Moving red triangle alert is guarding your device!',
+                    'चलती लाल त्रिकोण चेतावनी आपके डिवाइस की रक्षा कर रही है!',
+                  ),
+                  childName: _profile?.displayName,
+                );
+              },
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.bolt, size: 16, color: Colors.amber),
+                  SizedBox(width: 2),
+                  Text('Test Alert', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+          ],
         ),
       );
 
@@ -1465,6 +1552,21 @@ class _ProtectionScreenState extends State<ProtectionScreen>
         ][_selectedSection]),
         actions: [
           IconButton(
+            tooltip: _text('Test Alert Animation', 'लाइव अलर्ट टेस्ट करें'),
+            onPressed: () {
+              showLiveAlertBanner(
+                context: context,
+                title: _text('Live Security Alert', 'लाइव सुरक्षा चेतावनी'),
+                message: _text(
+                  'Moving red triangle alert notification is active!',
+                  'चलती लाल त्रिकोण चेतावनी सूचना सक्रिय है!',
+                ),
+                childName: _profile?.displayName,
+              );
+            },
+            icon: const Icon(Icons.add_alert_rounded, color: Colors.amber),
+          ),
+          IconButton(
             tooltip: _text('Refresh', 'रीफ़्रेश'),
             onPressed: _loading ? null : _syncRules,
             icon: const Icon(Icons.refresh),
@@ -1584,22 +1686,36 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                                     )),
                                   ),
                                 ),
-                              Card(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: DualUsageChart(
-                                    logs: _activityLogs,
-                                    title: _text(
-                                      'My Screen Time Analytics',
-                                      'मेरी स्क्रीन समय विश्लेषण',
+                              GlassCard(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    DualUsageChart(
+                                      logs: _activityLogs,
+                                      title: _text(
+                                        'My Screen Time Analytics',
+                                        'मेरी स्क्रीन समय विश्लेषण',
+                                      ),
                                     ),
-                                  ),
+                                    const SizedBox(height: 10),
+                                    Center(
+                                      child: TextButton.icon(
+                                        onPressed: _openActivityLogs,
+                                        icon: const Icon(Icons.list_alt_rounded, size: 18),
+                                        label: Text(
+                                          _text('View Categorized Logs (Live & Usage)', 'विस्तृत लॉग देखें (लाइव और उपयोग)'),
+                                          style: const TextStyle(fontWeight: FontWeight.w700),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                               const SizedBox(height: 8),
                             ],
                             if (_selectedSection == 0) ...[
-                              Card(
+                              GlassCard(
                                 child: SwitchListTile(
                                   secondary:
                                       const Icon(Icons.location_on_outlined),

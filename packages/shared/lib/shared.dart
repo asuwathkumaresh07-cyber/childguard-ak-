@@ -8,6 +8,7 @@ export 'src/categorized_logs_view.dart';
 export 'src/config.dart';
 export 'src/dual_usage_chart.dart';
 export 'src/family_service.dart';
+export 'src/glass_card.dart';
 export 'src/guardian_character.dart';
 export 'src/live_alert_banner.dart';
 export 'src/local_store.dart';
