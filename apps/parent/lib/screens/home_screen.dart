@@ -1150,7 +1150,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Row(
                 children: [
                   Icon(Icons.shield_moon_outlined,
-                      color: Color(0xFF286F69), size: 30),
+                      color: Color(0xFFFF1744), size: 30),
                   SizedBox(width: 10),
                   Text(
                     'Family Guard',
@@ -1262,7 +1262,7 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: ListTile(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        leading: Icon(icon, color: const Color(0xFF3D7978)),
+        leading: Icon(icon, color: const Color(0xFFFF1744)),
         title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
         trailing: const Icon(Icons.chevron_right, size: 18),
         onTap: onTap,

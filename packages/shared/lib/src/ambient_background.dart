@@ -37,31 +37,43 @@ class _AmbientBackgroundState extends State<AmbientBackground>
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = widget.waveColor ?? Theme.of(context).colorScheme.primary;
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    final primaryColor = widget.waveColor ?? theme.colorScheme.primary;
+    final secondaryColor = theme.colorScheme.secondary;
+
+    // Detect whether Red is dominant (Parent App) or Blue is dominant (Child App)
+    final isRedDominant = (primaryColor.r * 255).round() > (primaryColor.b * 255).round();
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Base ambient gradient
+        // Base ambient gradient (White, Blue, and Neon Red palette)
         DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: dark
+              colors: isRedDominant
                   ? const [
-                      Color(0xFF0F1718),
-                      Color(0xFF131D1C),
-                      Color(0xFF161F23),
-                      Color(0xFF0D1418),
+                      Color(0xFFFFFFFF),
+                      Color(0xFFFCFDFE),
+                      Color(0xFFFFF4F6),
+                      Color(0xFFF2F6FE),
                     ]
-                  : const [
-                      Color(0xFFF0F8F6),
-                      Color(0xFFEAF4FB),
-                      Color(0xFFF3F2FB),
-                      Color(0xFFEEF7F4),
-                    ],
+                  : (dark
+                      ? const [
+                          Color(0xFF070E1A),
+                          Color(0xFF0A1528),
+                          Color(0xFF0D1B34),
+                          Color(0xFF060B14),
+                        ]
+                      : const [
+                          Color(0xFFFFFFFF),
+                          Color(0xFFF3F7FE),
+                          Color(0xFFEBF3FD),
+                          Color(0xFFFFF5F7),
+                        ]),
             ),
           ),
         ),
@@ -78,6 +90,8 @@ class _AmbientBackgroundState extends State<AmbientBackground>
                     progress: progress,
                     isDark: dark,
                     primaryColor: primaryColor,
+                    secondaryColor: secondaryColor,
+                    isRedDominant: isRedDominant,
                   ),
                   size: Size.infinite,
                 );
@@ -97,11 +111,15 @@ class _WavyLivePainter extends CustomPainter {
     required this.progress,
     required this.isDark,
     required this.primaryColor,
+    required this.secondaryColor,
+    required this.isRedDominant,
   });
 
   final double progress;
   final bool isDark;
   final Color primaryColor;
+  final Color secondaryColor;
+  final bool isRedDominant;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -109,85 +127,144 @@ class _WavyLivePainter extends CustomPainter {
 
     final width = size.width;
     final height = size.height;
-
-    // 1. Draw glowing background orbs
     final phase = progress * math.pi * 2;
-    _drawGlowingOrb(
-      canvas,
-      Offset(-20 + math.sin(phase) * 35, height * 0.18 + math.cos(phase) * 30),
-      140,
-      (isDark ? const Color(0xFF1A5852) : const Color(0xFF8CE0D6)).withValues(alpha: isDark ? 0.35 : 0.30),
-    );
-    _drawGlowingOrb(
-      canvas,
-      Offset(width + 20 + math.cos(phase * 0.7) * 40, height * 0.45 + math.sin(phase * 0.7) * 35),
-      170,
-      (isDark ? const Color(0xFF1D4766) : const Color(0xFFA5D1F6)).withValues(alpha: isDark ? 0.30 : 0.28),
-    );
-    _drawGlowingOrb(
-      canvas,
-      Offset(width * 0.3 + math.sin(phase * 0.5) * 30, height * 0.75 + math.cos(phase * 0.5) * 25),
-      120,
-      (isDark ? const Color(0xFF38295E) : const Color(0xFFD6C8F6)).withValues(alpha: isDark ? 0.25 : 0.22),
-    );
 
-    // 2. Draw 3 distinct flowing sinusoidal waves
-    // Bottom Wave 1 (Deep base wave)
-    _drawSineWave(
-      canvas: canvas,
-      size: size,
-      baseY: height * 0.88,
-      amplitude: 28,
-      wavelength: width * 1.1,
-      phaseOffset: phase * 1.0,
-      colors: isDark
-          ? [
-              const Color(0xFF154441).withValues(alpha: 0.30),
-              const Color(0xFF16323B).withValues(alpha: 0.18),
-            ]
-          : [
-              const Color(0xFF5AB6AA).withValues(alpha: 0.16),
-              const Color(0xFF6FAEDB).withValues(alpha: 0.10),
-            ],
-    );
+    const neonRed = Color(0xFFFF1744);
+    const cyberBlue = Color(0xFF0066FF);
 
-    // Mid Wave 2 (Flowing counter wave)
-    _drawSineWave(
-      canvas: canvas,
-      size: size,
-      baseY: height * 0.92,
-      amplitude: 22,
-      wavelength: width * 0.85,
-      phaseOffset: -phase * 1.35 + math.pi / 3,
-      colors: isDark
-          ? [
-              const Color(0xFF1C4258).withValues(alpha: 0.28),
-              const Color(0xFF1A2B42).withValues(alpha: 0.16),
-            ]
-          : [
-              const Color(0xFF61A8DD).withValues(alpha: 0.15),
-              const Color(0xFF8672C7).withValues(alpha: 0.09),
-            ],
-    );
+    if (isRedDominant) {
+      // ========================================================
+      // PARENT APP: White, Blue, and Neon Red (RED DOMINANT)
+      // ========================================================
+      // 1. Glowing ambient orbs (Neon Red dominant + Cyber Blue accents)
+      _drawGlowingOrb(
+        canvas,
+        Offset(-20 + math.sin(phase) * 35, height * 0.18 + math.cos(phase) * 30),
+        150,
+        neonRed.withValues(alpha: 0.20),
+      );
+      _drawGlowingOrb(
+        canvas,
+        Offset(width + 20 + math.cos(phase * 0.7) * 40, height * 0.45 + math.sin(phase * 0.7) * 35),
+        160,
+        cyberBlue.withValues(alpha: 0.16),
+      );
+      _drawGlowingOrb(
+        canvas,
+        Offset(width * 0.35 + math.sin(phase * 0.5) * 30, height * 0.78 + math.cos(phase * 0.5) * 25),
+        130,
+        const Color(0xFFFF3D71).withValues(alpha: 0.14),
+      );
 
-    // Front Wave 3 (Delicate ripple wave)
-    _drawSineWave(
-      canvas: canvas,
-      size: size,
-      baseY: height * 0.95,
-      amplitude: 16,
-      wavelength: width * 0.65,
-      phaseOffset: phase * 1.8 + math.pi / 2,
-      colors: isDark
-          ? [
-              const Color(0xFF225B54).withValues(alpha: 0.32),
-              const Color(0xFF1B3D3B).withValues(alpha: 0.20),
-            ]
-          : [
-              const Color(0xFF38A395).withValues(alpha: 0.18),
-              const Color(0xFF4FA0DE).withValues(alpha: 0.12),
-            ],
-    );
+      // 2. 3 Flowing Sinusoidal Waves
+      // Bottom Wave 1: Dominant Neon Red wave
+      _drawSineWave(
+        canvas: canvas,
+        size: size,
+        baseY: height * 0.88,
+        amplitude: 28,
+        wavelength: width * 1.1,
+        phaseOffset: phase * 1.0,
+        colors: [
+          neonRed.withValues(alpha: 0.20),
+          const Color(0xFFFF5277).withValues(alpha: 0.08),
+        ],
+      );
+
+      // Mid Wave 2: Cyber Blue counter wave
+      _drawSineWave(
+        canvas: canvas,
+        size: size,
+        baseY: height * 0.92,
+        amplitude: 22,
+        wavelength: width * 0.85,
+        phaseOffset: -phase * 1.35 + math.pi / 3,
+        colors: [
+          cyberBlue.withValues(alpha: 0.15),
+          const Color(0xFF40C4FF).withValues(alpha: 0.06),
+        ],
+      );
+
+      // Front Wave 3: Intense Neon Red ripple wave
+      _drawSineWave(
+        canvas: canvas,
+        size: size,
+        baseY: height * 0.95,
+        amplitude: 16,
+        wavelength: width * 0.65,
+        phaseOffset: phase * 1.8 + math.pi / 2,
+        colors: [
+          neonRed.withValues(alpha: 0.24),
+          const Color(0xFFFF3D71).withValues(alpha: 0.10),
+        ],
+      );
+    } else {
+      // ========================================================
+      // CHILD APP: Blue, White, and Neon Red (BLUE DOMINANT)
+      // ========================================================
+      // 1. Glowing ambient orbs (Cyber Blue dominant + Neon Red accents)
+      _drawGlowingOrb(
+        canvas,
+        Offset(-20 + math.sin(phase) * 35, height * 0.18 + math.cos(phase) * 30),
+        150,
+        cyberBlue.withValues(alpha: isDark ? 0.30 : 0.22),
+      );
+      _drawGlowingOrb(
+        canvas,
+        Offset(width + 20 + math.cos(phase * 0.7) * 40, height * 0.45 + math.sin(phase * 0.7) * 35),
+        160,
+        neonRed.withValues(alpha: isDark ? 0.22 : 0.15),
+      );
+      _drawGlowingOrb(
+        canvas,
+        Offset(width * 0.35 + math.sin(phase * 0.5) * 30, height * 0.78 + math.cos(phase * 0.5) * 25),
+        130,
+        const Color(0xFF00B0FF).withValues(alpha: isDark ? 0.26 : 0.16),
+      );
+
+      // 2. 3 Flowing Sinusoidal Waves
+      // Bottom Wave 1: Dominant Cyber Blue wave
+      _drawSineWave(
+        canvas: canvas,
+        size: size,
+        baseY: height * 0.88,
+        amplitude: 28,
+        wavelength: width * 1.1,
+        phaseOffset: phase * 1.0,
+        colors: [
+          cyberBlue.withValues(alpha: isDark ? 0.32 : 0.22),
+          const Color(0xFF00B0FF).withValues(alpha: isDark ? 0.18 : 0.10),
+        ],
+      );
+
+      // Mid Wave 2: Neon Red accent counter wave
+      _drawSineWave(
+        canvas: canvas,
+        size: size,
+        baseY: height * 0.92,
+        amplitude: 22,
+        wavelength: width * 0.85,
+        phaseOffset: -phase * 1.35 + math.pi / 3,
+        colors: [
+          neonRed.withValues(alpha: isDark ? 0.20 : 0.14),
+          const Color(0xFFFF5277).withValues(alpha: isDark ? 0.10 : 0.06),
+        ],
+      );
+
+      // Front Wave 3: Electric Blue ripple wave
+      _drawSineWave(
+        canvas: canvas,
+        size: size,
+        baseY: height * 0.95,
+        amplitude: 16,
+        wavelength: width * 0.65,
+        phaseOffset: phase * 1.8 + math.pi / 2,
+        colors: [
+          const Color(0xFF0052CC).withValues(alpha: isDark ? 0.34 : 0.24),
+          cyberBlue.withValues(alpha: isDark ? 0.20 : 0.12),
+        ],
+      );
+    }
 
     // 3. Subtle floating particles / cyber security sparkles
     _drawFloatingParticles(canvas, size, phase);
@@ -244,9 +321,13 @@ class _WavyLivePainter extends CustomPainter {
       final x = (size.width * (0.15 + (i * 0.12) % 0.8) + math.sin(phase * speed + seed) * 18) % size.width;
       final y = (size.height * (0.3 + (i * 0.11) % 0.6) - ((progress * speed + (i * 0.2)) % 1.0) * size.height * 0.5) % size.height;
       final radius = 2.0 + (i % 3) * 1.5;
-      final alpha = (0.2 + math.sin(phase * 2 + seed).abs() * 0.3).clamp(0.0, 0.5);
+      final alpha = (0.25 + math.sin(phase * 2 + seed).abs() * 0.35).clamp(0.0, 0.6);
 
-      paint.color = (isDark ? const Color(0xFF6AE3D5) : const Color(0xFF28857B)).withValues(alpha: alpha);
+      // Alternating Neon Red & Cyber Blue particles
+      final color = (i % 2 == 0)
+          ? (isRedDominant ? const Color(0xFFFF1744) : const Color(0xFF0066FF))
+          : (isRedDominant ? const Color(0xFF0066FF) : const Color(0xFFFF1744));
+      paint.color = color.withValues(alpha: alpha);
       canvas.drawCircle(Offset(x, y), radius, paint);
     }
   }
@@ -255,5 +336,7 @@ class _WavyLivePainter extends CustomPainter {
   bool shouldRepaint(covariant _WavyLivePainter oldDelegate) =>
       oldDelegate.progress != progress ||
       oldDelegate.isDark != isDark ||
-      oldDelegate.primaryColor != primaryColor;
+      oldDelegate.primaryColor != primaryColor ||
+      oldDelegate.secondaryColor != secondaryColor ||
+      oldDelegate.isRedDominant != isRedDominant;
 }

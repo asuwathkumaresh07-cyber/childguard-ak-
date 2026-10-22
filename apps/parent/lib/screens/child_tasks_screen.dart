@@ -270,7 +270,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                         const Icon(
                           Icons.checklist_rounded,
                           size: 34,
-                          color: Color(0xFF286F69),
+                          color: Color(0xFFFF1744),
                         ),
                         const SizedBox(width: 12),
                         Expanded(

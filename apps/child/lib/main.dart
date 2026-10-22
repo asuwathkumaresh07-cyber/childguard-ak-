@@ -63,31 +63,41 @@ class _ChildAppState extends State<ChildApp> {
 
   ThemeData _theme(Brightness brightness) {
     final dark = brightness == Brightness.dark;
+    const cyberBlue = Color(0xFF0066FF);
+    const neonRed = Color(0xFFFF1744);
+
     final scheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF176B67),
+      seedColor: cyberBlue,
       brightness: brightness,
     ).copyWith(
-      primary: dark ? const Color(0xFF72D3C4) : const Color(0xFF176B67),
-      secondary: dark ? const Color(0xFF9CC9EF) : const Color(0xFF4779A6),
-      tertiary: dark ? const Color(0xFFD0AEF4) : const Color(0xFF8061A8),
-      surface: dark ? const Color(0xFF182625) : const Color(0xFFF9FCFC),
+      primary: dark ? const Color(0xFF3D8BFF) : cyberBlue, // Blue dominant!
+      onPrimary: Colors.white,
+      primaryContainer: dark ? const Color(0xFF003882) : const Color(0xFFE5F0FF),
+      onPrimaryContainer: dark ? const Color(0xFFD6E4FF) : const Color(0xFF003D99),
+      secondary: neonRed, // Neon red accent!
+      onSecondary: Colors.white,
+      secondaryContainer: dark ? const Color(0xFF5C0014) : const Color(0xFFFFE8EC),
+      onSecondaryContainer: dark ? const Color(0xFFFFD6DD) : const Color(0xFFC00028),
+      tertiary: const Color(0xFF00B0FF),
+      surface: dark ? const Color(0xFF0D1726) : Colors.white,
+      onSurface: dark ? const Color(0xFFF1F5F9) : const Color(0xFF0F172A),
     );
     return ThemeData(
       colorScheme: scheme,
       brightness: brightness,
       useMaterial3: true,
       scaffoldBackgroundColor:
-          dark ? const Color(0xFF101918) : const Color(0xFFF1F7F7),
+          dark ? const Color(0xFF070E1A) : const Color(0xFFFFFFFF),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         foregroundColor:
-            dark ? const Color(0xFFE5F0ED) : const Color(0xFF173B42),
+            dark ? const Color(0xFFF1F5F9) : const Color(0xFF0F172A),
         elevation: 0,
         centerTitle: false,
       ),
       cardTheme: CardThemeData(
         color: dark
-            ? const Color(0xFF1B2A28).withValues(alpha: .96)
+            ? const Color(0xFF111E33).withValues(alpha: .96)
             : Colors.white.withValues(alpha: .92),
         surfaceTintColor: Colors.transparent,
         elevation: 1,
@@ -95,13 +105,20 @@ class _ChildAppState extends State<ChildApp> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
           side: BorderSide(
-            color: scheme.primary.withValues(alpha: dark ? .28 : .20),
+            color: scheme.primary.withValues(alpha: dark ? .35 : .22),
           ),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: dark ? const Color(0xFF3D8BFF) : cyberBlue,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: dark
-            ? const Color(0xFF182321).withValues(alpha: .98)
+            ? const Color(0xFF0D1726).withValues(alpha: .98)
             : Colors.white.withValues(alpha: .96),
         indicatorColor: scheme.primaryContainer,
       ),

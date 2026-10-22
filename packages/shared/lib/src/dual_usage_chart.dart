@@ -53,7 +53,7 @@ class _DualUsageChartState extends State<DualUsageChart> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final primary = widget.primaryColor ?? theme.colorScheme.primary;
-    final secondary = widget.secondaryColor ?? const Color(0xFF00ACC1);
+    final secondary = widget.secondaryColor ?? theme.colorScheme.secondary;
 
     final now = DateTime.now();
     // Last 7 days ending today
