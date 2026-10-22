@@ -215,7 +215,7 @@ packages:
     source: sdk
     version: "0.0.0"
   flutter_animate:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: flutter_animate
       sha256: "7befe2d3252728afb77aecaaea1dec88a89d35b9b1d2eea6d04479e8af9117b5"
@@ -550,7 +550,7 @@ packages:
     source: hosted
     version: "2.1.0"
   not_static_icons:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: not_static_icons
       sha256: "153102cf0a11534c643d9cbbd0ba09ef82877b2bdb1e5e16b24612ddca5c3a81"

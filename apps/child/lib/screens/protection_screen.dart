@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,20 +10,18 @@ import 'package:shared/shared.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../native/protection_bridge.dart';
+import '../widgets/child_companion.dart';
+import '../widgets/companion_check_in.dart';
 
 class ProtectionScreen extends StatefulWidget {
   const ProtectionScreen({
     super.key,
     this.localeCode = 'en',
-    this.themeMode = ThemeMode.light,
     this.onLocaleChanged,
-    this.onThemeModeChanged,
   });
 
   final String localeCode;
-  final ThemeMode themeMode;
   final ValueChanged<String>? onLocaleChanged;
-  final ValueChanged<ThemeMode>? onThemeModeChanged;
 
   @override
   State<ProtectionScreen> createState() => _ProtectionScreenState();
@@ -55,6 +53,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
   bool _loading = true;
   bool _vpnOn = false;
   bool _applyingProtectionCode = false;
+  bool _sendingCheckIn = false;
   bool _usageOk = false;
   bool _a11yOk = false;
   bool _syncingDomainEvents = false;
@@ -766,55 +765,44 @@ class _ProtectionScreenState extends State<ProtectionScreen>
   Future<void> _showMoodCheckinDialog() async {
     final profile = _profile;
     final family = _familyModel;
-    if (profile == null || family == null) return;
+    if (_sendingCheckIn) return;
+    if (profile == null || family == null || !_family.isUsingSupabase) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_text(
+              'Connect your family account to share a check-in.',
+              'चेक-इन भेजने के लिए पारिवारिक खाता जोड़ें।'))));
+      return;
+    }
+    _sendingCheckIn = true;
     try {
-      final mood = await showDialog<String>(
-        context: context,
-        builder: (context) => SimpleDialog(
-          title: const Text('How are you feeling today?'),
-          children: [
-            for (final option in const [
-              ('great', 'Great', Icons.sentiment_very_satisfied),
-              ('okay', 'Okay', Icons.sentiment_satisfied),
-              ('low', 'A little low', Icons.sentiment_dissatisfied),
-              ('stressed', 'Stressed', Icons.sentiment_very_dissatisfied),
-            ])
-              SimpleDialogOption(
-                onPressed: () => Navigator.pop(context, option.$1),
-                child: Row(
-                  children: [
-                    LiveIcon(option.$3),
-                    const SizedBox(width: 12),
-                    Text(option.$2),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      );
-      if (mood == null) return;
+      final response = await showDialog<CompanionCheckIn>(
+          context: context,
+          builder: (_) => CompanionCheckInDialog(hindi: _hindi));
+      if (response == null) return;
       await _family.createChildMoodCheckin(
-        familyId: family.id,
-        childId: profile.id,
-        mood: mood,
-      );
+          familyId: family.id,
+          childId: profile.id,
+          mood: response.mood,
+          note: response.note);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_text('Your check-in was shared with your parent.',
+              'आपका चेक-इन माता-पिता को भेज दिया गया है।'))));
       await _syncRules();
     } catch (error) {
-      debugPrint('Sending child mood check-in failed: $error');
+      debugPrint('Sending child check-in failed: $error');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error. Please try again.')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(_text('Check-in could not be sent. Please try again.',
+                'चेक-इन नहीं भेजा जा सका। फिर कोशिश करें।'))));
       }
+    } finally {
+      _sendingCheckIn = false;
     }
   }
 
-  bool get _moodCheckinDue =>
-      _moodCheckins.isEmpty ||
-      DateTime.now()
-              .difference(_moodCheckins.first.createdAt.toLocal())
-              .inDays >=
-          7;
+  bool get _moodCheckinDue => !_moodCheckins.any((checkIn) =>
+      DateUtils.isSameDay(checkIn.createdAt.toLocal(), DateTime.now()));
 
   Map<String, int> _effectiveDailyLimits(
     List<AppTimeLimit> limits,
@@ -1510,13 +1498,14 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                     '${task.description.isEmpty ? '' : '${task.description}\n'}${task.taskType == 'homework' ? 'Homework' : 'Task'} · ${_taskStatusLabel(task.status)}',
                   ),
                   isThreeLine: task.description.isNotEmpty,
-                  trailing: task.status == 'assigned'
-                      ? IconButton.filledTonal(
-                          tooltip: 'Send photo proof',
-                          onPressed: () => _submitTaskProof(task),
-                          icon: const LiveIcon(Icons.camera_alt_outlined),
-                        )
-                      : const LiveIcon(Icons.check_circle_outline),
+                  trailing:
+                      task.status == 'assigned' || task.status == 'rejected'
+                          ? IconButton.filledTonal(
+                              tooltip: 'Send photo proof',
+                              onPressed: () => _submitTaskProof(task),
+                              icon: const LiveIcon(Icons.camera_alt_outlined),
+                            )
+                          : const LiveIcon(Icons.check_circle_outline),
                 ),
               ),
           ],
@@ -1529,7 +1518,15 @@ class _ProtectionScreenState extends State<ProtectionScreen>
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
+        foregroundColor: AppPalette.navy,
+        surfaceTintColor: Colors.transparent,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: Colors.white,
+            statusBarIconBrightness: Brightness.dark,
+            statusBarBrightness: Brightness.light,
+            systemNavigationBarColor: Colors.white,
+            systemNavigationBarIconBrightness: Brightness.dark),
         title: Text([
           _text('Home', 'होम'),
           _text('My tasks', 'मेरे काम'),
@@ -1551,21 +1548,6 @@ class _ProtectionScreenState extends State<ProtectionScreen>
               PopupMenuItem(value: 'hi', child: Text('हिन्दी')),
             ],
             icon: const LiveIcon(Icons.language),
-          ),
-          IconButton(
-            tooltip: widget.themeMode == ThemeMode.dark
-                ? _text('Switch to light theme', 'लाइट थीम चालू करें')
-                : _text('Switch to dark theme', 'डार्क थीम चालू करें'),
-            onPressed: widget.onThemeModeChanged == null
-                ? null
-                : () => widget.onThemeModeChanged!(
-                      widget.themeMode == ThemeMode.dark
-                          ? ThemeMode.light
-                          : ThemeMode.dark,
-                    ),
-            icon: LiveIcon(widget.themeMode == ThemeMode.dark
-                ? Icons.light_mode_outlined
-                : Icons.dark_mode_outlined),
           ),
         ],
       ),
@@ -1622,7 +1604,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                     ),
                   ),
                 )
-              : AmbientBackground(
+              : CompanionBackdrop(
                   child: _familyModel == null && _selectedSection != 0
                       ? _buildUnlinkedMessage()
                       : ListView(
@@ -1646,6 +1628,22 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                               ),
                             if (_selectedSection == 0) ...[
                               _buildHomeHeader(context),
+                              if (_selectedSection == 0 && _profile != null)
+                                ChildCompanionCard(
+                                    key: ValueKey('companion_${_profile!.id}'),
+                                    childId: _profile!.id,
+                                    tasks: _tasks,
+                                    vpnEnabled: _vpnOn,
+                                    permissionsReady: _usageOk && _a11yOk,
+                                    checkInDue: _moodCheckinDue,
+                                    onTasks: () =>
+                                        setState(() => _selectedSection = 1),
+                                    onProtection: () =>
+                                        setState(() => _selectedSection = 2),
+                                    onPermissions: () =>
+                                        setState(() => _selectedSection = 3),
+                                    onCheckIn: _showMoodCheckinDialog,
+                                    hindi: _hindi),
                               const SizedBox(height: 12),
                               if (_familyModel == null)
                                 Card(
@@ -2135,24 +2133,6 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                             ],
                             if (_selectedSection == 1) ...[
                               _buildChildTasks(),
-                            ],
-                            if (_selectedSection == 0) ...[
-                              if (_moodCheckinDue) ...[
-                                const SizedBox(height: 8),
-                                Card(
-                                  child: ListTile(
-                                    leading: const LiveIcon(Icons.mood),
-                                    title: const Text('A quick check-in'),
-                                    subtitle: const Text(
-                                      'How have you been feeling this week?',
-                                    ),
-                                    trailing: TextButton(
-                                      onPressed: _showMoodCheckinDialog,
-                                      child: const Text('Check in'),
-                                    ),
-                                  ),
-                                ),
-                              ],
                             ],
                           ],
                         ),

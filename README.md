@@ -20,6 +20,21 @@ depth, and drag-to-tilt interaction. Compact versions appear in sign-in and
 approval buttons. Loaders follow real operation state and do not add artificial
 delays or simulated progress.
 
+The Child app stays in light mode, including the Android header and launch
+screen. Children can choose an animated cat, puppy, or bird companion. Its
+task and protection prompts use the current task list and device status. Pet
+selection, actions, and check-in answers use grids; tapping or dragging the pet
+plays a friendly reaction. The background has gentle floating paws, and a
+30-second breathing break is available from the action grid. Motion respects
+the device's reduced-animation setting.
+
+The optional daily check-in asks about mood, homework progress, help needed,
+and a short note. Answers are sent only after **Share with parent** and are
+stored through the existing Supabase mood check-in feature. Parents can read
+the details in **Other → Recent mood check-ins**. Choosing a pet is saved per
+child on that device. Reminders are shown while the child uses the app.
+[Companion layout preview](artifacts/child-buddy-preview.png) uses sample tasks.
+
 [Narrow-phone layout preview](artifacts/activity-preview.png) uses sample activity
 to show the updated graph and VPN status layout.
 

@@ -11,6 +11,8 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+  flutter_animate: ^4.5.2
+  not_static_icons: ^0.54.0
   cupertino_icons: ^1.0.8
   shared:
     path: ../../packages/shared
