@@ -1,0 +1,7 @@
+project_id = "family-guard"
+
+[functions.create-child-account]
+verify_jwt = true
+
+[functions.send-tamper-alert]
+verify_jwt = true
