@@ -16,12 +16,14 @@ class ChildDetailScreen extends StatefulWidget {
     required this.childId,
     required this.childName,
     this.initialTab = 0,
+    this.familyService,
   });
 
   final String familyId;
   final String childId;
   final String childName;
   final int initialTab;
+  final FamilyService? familyService;
 
   @override
   State<ChildDetailScreen> createState() => _ChildDetailScreenState();
@@ -29,7 +31,7 @@ class ChildDetailScreen extends StatefulWidget {
 
 class _ChildDetailScreenState extends State<ChildDetailScreen>
     with SingleTickerProviderStateMixin {
-  final _family = FamilyService();
+  late final _family = widget.familyService ?? FamilyService();
   late final TabController _tabs;
   late final DateFormat _fmt = DateFormat('MMM d, h:mm a');
 
@@ -50,6 +52,8 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
   Set<String> _currentlyBlockedApps = {};
 
   bool _loading = true;
+  bool _loadInProgress = false;
+  bool _reloadRequested = false;
   String? _loadError;
   String _domainFilter = 'all'; // 'all', 'allowed', 'blocked'
   String _searchQuery = '';
@@ -72,7 +76,9 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
       if (!mounted) return;
       if (newLog.childId == widget.childId) {
         setState(() {
-          _domains.insert(0, newLog);
+          if (_domains.every((log) => log.id != newLog.id)) {
+            _domains.insert(0, newLog);
+          }
         });
       }
     });
@@ -92,6 +98,12 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
   }
 
   Future<void> _load({bool silent = false}) async {
+    if (!mounted) return;
+    if (_loadInProgress) {
+      _reloadRequested = true;
+      return;
+    }
+    _loadInProgress = true;
     if (!silent) {
       setState(() {
         _loading = true;
@@ -214,11 +226,21 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
           _loadError = userFacingError;
         });
       }
+    } finally {
+      _loadInProgress = false;
+      if (_reloadRequested && mounted) {
+        _reloadRequested = false;
+        unawaited(_load(silent: true));
+      }
     }
   }
 
   void _onTamperEvent(ChildTamperEvent event) {
-    if (!mounted || event.childId != widget.childId) return;
+    if (!mounted ||
+        event.childId != widget.childId ||
+        _tamperEvents.any((item) => item.id == event.id)) {
+      return;
+    }
     setState(() {
       if (_tamperEvents.every((existing) => existing.id != event.id)) {
         _tamperEvents.insert(0, event);
@@ -231,10 +253,9 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
       message: '${widget.childName}: ${_tamperEventLabel(event.eventType)}',
       childName: widget.childName,
       onView: () {
-        _tabs.animateTo(1);
+        _tabs.animateTo(0);
       },
     );
-    _load(silent: true);
   }
 
   String _tamperEventLabel(String eventType) {
@@ -831,7 +852,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
       _showMessage(
         mode == 'strict'
             ? 'Strict mode enabled. Child pause requests are disabled.'
-            : 'Friendly mode enabled. Child can request a protection pause.',
+            : 'Friendly mode enabled. Warnings come before activity alerts; the child can also request a pause.',
       );
     } catch (e) {
       _showError('update protection mode', e);
@@ -906,7 +927,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
         DateTime.now().difference(_deviceStatus!.lastSeenAt).inMinutes >= 3;
     final action = vpnEnabled == true ? 'disable' : 'enable';
     final statusText = vpnEnabled == null
-        ? 'Waiting for Child app to report VPN status'
+        ? 'Waiting for device status'
         : stale
             ? 'Last reported: VPN ${vpnEnabled ? "ON" : "OFF"}'
             : vpnEnabled
@@ -917,69 +938,76 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
       child: GlassCard(
         padding: const EdgeInsets.all(12),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            LiveIcon(
-              vpnEnabled == null
-                  ? Icons.shield_outlined
-                  : vpnEnabled
-                      ? Icons.shield_rounded
-                      : Icons.gpp_bad_rounded,
-              size: 40,
-              loop: vpnEnabled != null && !stale,
-              color: vpnEnabled == false ? AppPalette.red : AppPalette.blue,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      LiveIcon(
-                        vpnEnabled == true
-                            ? Icons.shield
-                            : Icons.shield_outlined,
-                        size: 16,
-                        color: vpnEnabled == true
-                            ? const Color(0xFF172B4D)
-                            : Theme.of(context).colorScheme.error,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        statusText,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 13),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${widget.childName} · ${_protectionMode.toUpperCase()} mode',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white60
-                          : Colors.black54,
-                    ),
-                  ),
-                ],
+            Row(children: [
+              LiveIcon(
+                vpnEnabled == null
+                    ? Icons.shield_outlined
+                    : vpnEnabled
+                        ? Icons.shield_rounded
+                        : Icons.gpp_bad_rounded,
+                size: 40,
+                loop: vpnEnabled != null && !stale,
+                color: vpnEnabled == false ? AppPalette.red : AppPalette.blue,
               ),
-            ),
-            Wrap(
-              spacing: 6,
-              children: [
-                FilledButton.tonal(
-                  style: FilledButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                  ),
-                  onPressed: () => _generateProtectionCode(action),
-                  child: Text(vpnEnabled == true ? 'Turn OFF' : 'Turn ON',
-                      style: const TextStyle(fontSize: 11)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        LiveIcon(
+                          vpnEnabled == true
+                              ? Icons.shield
+                              : Icons.shield_outlined,
+                          size: 16,
+                          color: vpnEnabled == false
+                              ? AppPalette.red
+                              : AppPalette.blue,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                            child: Text(
+                          statusText,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 13),
+                        )),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${_protectionMode.toUpperCase()} mode · ${_deviceStatus == null ? 'No report yet' : 'Device reported'}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white60
+                            : Colors.black54,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            Align(
+                alignment: Alignment.centerRight,
+                child: Wrap(
+                  spacing: 6,
+                  children: [
+                    FilledButton.tonal(
+                      style: FilledButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                      ),
+                      onPressed: () => _generateProtectionCode(action),
+                      child: Text(vpnEnabled == true ? 'Turn OFF' : 'Turn ON',
+                          style: const TextStyle(fontSize: 11)),
+                    ),
+                  ],
+                )),
           ],
         ),
       ),
@@ -1061,7 +1089,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
               Text(
                 _protectionMode == 'strict'
                     ? 'Strict: no child pause requests. Every VPN change still requires a new parent code.'
-                    : 'Friendly: the child may request a pause. After approval, send a new parent code to apply it.',
+                    : 'Friendly: restricted websites warn first; continued attempts after 20 seconds are reported. Leaving a focus-rule app within 20 seconds cancels its alert. The child may also request a pause with your approval code.',
               ),
               const SizedBox(height: 8),
               SegmentedButton<String>(

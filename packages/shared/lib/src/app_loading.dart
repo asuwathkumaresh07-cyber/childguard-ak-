@@ -154,7 +154,9 @@ class AppLoadingView extends StatelessWidget {
   final IconData icon;
 
   @override
-  Widget build(BuildContext context) => Semantics(
+  Widget build(BuildContext context) => ColoredBox(
+      color: Colors.white,
+      child: Semantics(
         label: message,
         liveRegion: true,
         child: Center(
@@ -166,22 +168,22 @@ class AppLoadingView extends StatelessWidget {
             const SizedBox(height: 22),
             Text(message,
                 textAlign: TextAlign.center,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w700)),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700, color: AppPalette.navy)),
             if (detail != null) ...[
               const SizedBox(height: 8),
               Text(detail!,
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: const Color(0xFF52647D))),
             ],
             const SizedBox(height: 16),
             const ExcludeSemantics(child: _LoadingDots()),
           ]),
         ))),
-      );
+      ));
 }
 
 /// Compact version for sign-in, approval, and connection buttons.

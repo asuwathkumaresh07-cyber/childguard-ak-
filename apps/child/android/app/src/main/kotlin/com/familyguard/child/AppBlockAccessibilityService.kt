@@ -5,7 +5,6 @@ import android.app.usage.UsageStatsManager
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ApplicationInfo
 import android.os.Handler
 import android.os.Looper
 import android.os.Process
@@ -16,9 +15,32 @@ import java.util.concurrent.ConcurrentHashMap
 class AppBlockAccessibilityService : AccessibilityService() {
     private val activityDatabase by lazy { ActivityLogDatabase(applicationContext) }
     private val handler = Handler(Looper.getMainLooper())
-    private val dailyLimitCache = mutableMapOf<String, Pair<Long, Boolean>>()
+    private val dailyLimitCache = mutableMapOf<String, Triple<Long, Int, Boolean>>()
     private var foregroundPackage: String? = null
     private var foregroundStartedAt: Long = 0L
+    private val rewardExpiryCheck = object : Runnable {
+        override fun run() {
+            val pkg = foregroundPackage
+            if (pkg != null && pkg != packageName && shouldBlock(pkg)) {
+                flushForegroundUsage()
+                blockApp(pkg)
+            }
+            if (isEnabled) handler.postDelayed(this, 2000L)
+        }
+    }
+
+    private fun shouldBlock(pkg: String): Boolean {
+        val expiry = getSharedPreferences("parent_reward_access", Context.MODE_PRIVATE).getLong(pkg, 0L)
+        if (expiry > System.currentTimeMillis()) return false
+        return blockedPackages.contains(pkg) || isOverDailyLimit(pkg)
+    }
+
+    private fun blockApp(pkg: String) {
+        performGlobalAction(GLOBAL_ACTION_HOME)
+        startActivity(Intent(this, BlockedAppActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            .putExtra(BlockedAppActivity.EXTRA_PACKAGE, pkg))
+    }
     private val usageCheckpoint = object : Runnable {
         override fun run() {
             val currentPackage = foregroundPackage
@@ -41,12 +63,11 @@ class AppBlockAccessibilityService : AccessibilityService() {
             pkg != foregroundPackage
         ) {
             flushForegroundUsage()
-            if (pkg != packageName && isTrackablePackage(pkg)) {
-                reportForegroundPackage(pkg)
-            }
+            // Also announce Home and Family Guard so a friendly warning can be cancelled.
+            reportForegroundPackage(pkg)
         }
         if (pkg == packageName) return
-        if (!blockedPackages.contains(pkg) && !isOverDailyLimit(pkg)) {
+        if (!shouldBlock(pkg)) {
             if (foregroundPackage == null && isTrackablePackage(pkg)) {
                 foregroundPackage = pkg
                 foregroundStartedAt = System.currentTimeMillis()
@@ -93,10 +114,12 @@ class AppBlockAccessibilityService : AccessibilityService() {
         restoreBlockedPackages(this)
         isEnabled = true
         handler.postDelayed(usageCheckpoint, USAGE_CHECKPOINT_MS)
+        handler.postDelayed(rewardExpiryCheck, 2000L)
     }
 
     override fun onDestroy() {
         handler.removeCallbacks(usageCheckpoint)
+        handler.removeCallbacks(rewardExpiryCheck)
         flushForegroundUsage()
         isEnabled = false
         super.onDestroy()
@@ -105,18 +128,22 @@ class AppBlockAccessibilityService : AccessibilityService() {
     private fun isTrackablePackage(pkg: String): Boolean {
         if (pkg == packageName) return false
         return try {
-            val app = packageManager.getApplicationInfo(pkg, 0)
-            app.flags and ApplicationInfo.FLAG_SYSTEM == 0
+            val home = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+            val launcher = packageManager.resolveActivity(home, 0)?.activityInfo?.packageName
+            pkg != launcher && packageManager.getLaunchIntentForPackage(pkg) != null
         } catch (_: Exception) {
             false
         }
     }
 
     private fun isOverDailyLimit(pkg: String): Boolean {
-        val limitSeconds = dailyLimitsSeconds[pkg] ?: return false
         val now = System.currentTimeMillis()
-        dailyLimitCache[pkg]?.let { (checkedAt, exceeded) ->
-            if (now - checkedAt < LIMIT_CHECK_CACHE_MS) return exceeded
+        val configuredLimit = dailyLimitsSeconds[pkg] ?: return false
+        val rewardPrefs = getSharedPreferences("parent_reward_limits", Context.MODE_PRIVATE)
+        val expiry = rewardPrefs.getLong("expires_at", 0L)
+        val limitSeconds = if (expiry > 0 && now >= expiry) rewardPrefs.getInt(pkg, configuredLimit) else configuredLimit
+        dailyLimitCache[pkg]?.let { (checkedAt, checkedLimit, exceeded) ->
+            if (checkedLimit == limitSeconds && now - checkedAt < LIMIT_CHECK_CACHE_MS) return exceeded
         }
         val appOps = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
         val permission = appOps.checkOpNoThrow(
@@ -145,7 +172,7 @@ class AppBlockAccessibilityService : AccessibilityService() {
             return false
         }
         val exceeded = secondsUsed >= limitSeconds
-        dailyLimitCache[pkg] = now to exceeded
+        dailyLimitCache[pkg] = Triple(now, limitSeconds, exceeded)
         return exceeded
     }
 

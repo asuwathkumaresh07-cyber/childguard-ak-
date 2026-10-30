@@ -464,8 +464,8 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
           minTrustScore: 80,
           dailyExtraMinutesCap: 15,
         );
-    var enabled = current.enabled;
-    var minimumScore = current.minTrustScore.toDouble();
+    const enabled = false;
+    final minimumScore = current.minTrustScore.toDouble();
     final cap = TextEditingController(
       text: current.dailyExtraMinutesCap.toString(),
     );
@@ -474,41 +474,14 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
         context: context,
         builder: (context) => StatefulBuilder(
           builder: (context, setDialogState) => AlertDialog(
-            title: const Text('Trust-based autonomy'),
+            title: const Text('Parent-approved time rewards'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Enable automatic extra time'),
-                    subtitle: const Text(
-                      'VPN changes and core protection still require a parent code.',
-                    ),
-                    value: enabled,
-                    onChanged: (value) => setDialogState(() => enabled = value),
-                  ),
-                  Text(
-                    'Minimum trust score: ${minimumScore.round()}',
-                  ),
-                  Slider(
-                    value: minimumScore,
-                    min: 50,
-                    max: 100,
-                    divisions: 50,
-                    label: minimumScore.round().toString(),
-                    onChanged: (value) =>
-                        setDialogState(() => minimumScore = value),
-                  ),
-                  TextField(
-                    controller: cap,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Daily automatic extra-time cap (minutes)',
-                      helperText: 'Shared across apps; 1 to 120 minutes.',
-                    ),
-                  ),
+                  const Text(
+                      'Extra screen time and temporary app access need your approval in Rewards & approvals. Children can earn their own cosmetic badges and themes. Confirm to also turn off the older trust-based automatic-time setting.'),
                 ],
               ),
             ),
@@ -526,7 +499,7 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
                     (enabled, minimumScore.round(), capMinutes),
                   );
                 },
-                child: const Text('Save'),
+                child: const Text('Require parent approval'),
               ),
             ],
           ),
@@ -867,18 +840,14 @@ class _ChildPlansScreenState extends State<ChildPlansScreen> {
             Card(
               child: ListTile(
                 leading: const LiveIcon(Icons.tune),
-                title: Text(
-                  _autonomy?.enabled == true
-                      ? 'Automatic extra time is enabled'
-                      : 'Automatic extra time is off',
-                ),
+                title: const Text('Parent approval for time rewards'),
                 subtitle: Text(
                   _autonomy?.enabled == true
-                      ? 'At score ${_autonomy!.minTrustScore}, up to ${_autonomy!.dailyExtraMinutesCap} minutes per day across apps.'
-                      : 'Set a trust threshold and daily cap. Parent-issued VPN codes remain required.',
+                      ? 'An older automatic-time setting is still saved. Turn it off for older app versions.'
+                      : 'Review screen-time and temporary-access requests in Rewards & approvals.',
                 ),
                 trailing: IconButton(
-                  tooltip: 'Configure trust-based autonomy',
+                  tooltip: 'Parent approval policy',
                   onPressed: _configureAutonomy,
                   icon: const LiveIcon(Icons.settings),
                 ),

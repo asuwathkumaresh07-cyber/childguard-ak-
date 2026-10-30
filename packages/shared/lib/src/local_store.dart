@@ -305,13 +305,13 @@ class LocalFamilyStore {
     await init();
     final session = _session;
     if (session == null) {
-      throw Exception('Sign in to the Parent app before approving requests.');
+      throw Exception('Sign in before verifying your password.');
     }
     final account =
         _data.accounts.where((item) => item.id == session.id).firstOrNull;
     if (account == null ||
         _hashPassword(account.passwordSalt, password) != account.passwordHash) {
-      throw Exception('Incorrect parent password.');
+      throw Exception('Incorrect account password.');
     }
   }
 

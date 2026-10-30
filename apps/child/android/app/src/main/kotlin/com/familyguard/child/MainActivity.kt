@@ -20,6 +20,7 @@ class MainActivity : FlutterActivity() {
     private val methodChannelName = "com.familyguard.child/protection"
     private val domainChannelName = "com.familyguard.child/domain_events"
     private val usageChannelName = "com.familyguard.child/usage_events"
+    private val calmAudioChannelName = "com.familyguard.child/calm_audio"
 
     private var domainSink: EventChannel.EventSink? = null
     private var usageSink: EventChannel.EventSink? = null
@@ -27,11 +28,27 @@ class MainActivity : FlutterActivity() {
     private var pendingNotificationResult: MethodChannel.Result? = null
     private lateinit var activityDatabase: ActivityLogDatabase
     private lateinit var usageMonitor: UsageMonitor
+    private val calmTonePlayer = CalmTonePlayer()
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         activityDatabase = ActivityLogDatabase(applicationContext)
         usageMonitor = UsageMonitor(applicationContext)
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, calmAudioChannelName)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "start" -> {
+                        calmTonePlayer.start(call.argument<String>("preset") ?: "meadow")
+                        result.success(null)
+                    }
+                    "stop" -> {
+                        calmTonePlayer.stop()
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
 
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, domainChannelName)
             .setStreamHandler(object : EventChannel.StreamHandler {
@@ -70,6 +87,16 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, methodChannelName)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
+                    "showFriendlyWarning" -> {
+                        android.widget.Toast.makeText(this, call.argument<String>("message") ?: "Please follow your family rules.", android.widget.Toast.LENGTH_LONG).show()
+                        result.success(null)
+                    }
+                    "setProtectionMode" -> {
+                        val mode = call.argument<String>("mode") ?: "strict"
+                        getSharedPreferences("safety_mode", Context.MODE_PRIVATE).edit()
+                            .putString("mode", if (mode == "friendly") "friendly" else "strict").apply()
+                        result.success(null)
+                    }
                     "requestNotificationPermission" -> {
                         if (Build.VERSION.SDK_INT >= 33 &&
                             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
@@ -134,12 +161,20 @@ class MainActivity : FlutterActivity() {
                     }
                     "updateBlockedApps" -> {
                         val packages = call.argument<List<String>>("packages") ?: emptyList()
+                        val access = call.argument<Map<String, Number>>("parentAccessUntil") ?: emptyMap()
+                        val rewardPrefs = getSharedPreferences("parent_reward_access", Context.MODE_PRIVATE).edit().clear()
+                        access.forEach { (pkg, expiry) -> rewardPrefs.putLong(pkg, expiry.toLong()) }
+                        rewardPrefs.apply()
                         AppBlockAccessibilityService.blockedPackages.clear()
                         AppBlockAccessibilityService.blockedPackages.addAll(packages)
                         ActivityLogDatabase.saveBlockedApps(this, packages)
                         result.success(null)
                     }
                     "updateDailyAppLimits" -> {
+                        val bases = call.argument<Map<String, Number>>("baseLimits") ?: emptyMap()
+                        val rewardPrefs = getSharedPreferences("parent_reward_limits", Context.MODE_PRIVATE).edit().clear()
+                        bases.forEach { (pkg, seconds) -> rewardPrefs.putInt(pkg, seconds.toInt().coerceAtLeast(1)) }
+                        rewardPrefs.putLong("expires_at", call.argument<Number>("extraTimeExpiresAt")?.toLong() ?: 0L).apply()
                         val limits = call.argument<Map<String, Number>>("limits")
                             ?.mapValues { it.value.toInt().coerceAtLeast(1) }
                             ?: emptyMap()
@@ -192,6 +227,11 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    override fun onDestroy() {
+        calmTonePlayer.stop()
+        super.onDestroy()
     }
 
     private fun isAccessibilityEnabled(): Boolean {

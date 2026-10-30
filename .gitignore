@@ -41,3 +41,6 @@ migrate_working_dir/
 
 # Local Supabase CLI project metadata
 supabase/.temp/
+
+# Temporary third-party asset research previews (not bundled)
+artifacts/pet-research/

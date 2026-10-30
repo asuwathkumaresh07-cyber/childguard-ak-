@@ -52,6 +52,13 @@ class _CategorizedLogsViewState extends State<CategorizedLogsView> {
 
   String _liveFilter = 'all'; // 'all', 'alerts', 'web', 'apps'
   String _searchQuery = '';
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   String _formatDuration(int seconds) {
     final s = math.max(0, seconds);
@@ -103,7 +110,9 @@ class _CategorizedLogsViewState extends State<CategorizedLogsView> {
               _buildCategoryTab(
                 category: LogCategory.live,
                 label: 'Live Log',
-                iconWidget: const _LivePulseDot(),
+                iconWidget: _LivePulseDot(
+                    color:
+                        _category == LogCategory.live ? Colors.white : primary),
                 active: _category == LogCategory.live,
                 activeColor: const Color(0xFF172B4D),
               ),
@@ -112,7 +121,7 @@ class _CategorizedLogsViewState extends State<CategorizedLogsView> {
                 label: 'Usage Graph',
                 iconWidget: const Icon(Icons.bar_chart_rounded, size: 18),
                 active: _category == LogCategory.usage,
-                activeColor: primary,
+                activeColor: const Color(0xFF172B4D),
               ),
             ],
           ),
@@ -126,6 +135,7 @@ class _CategorizedLogsViewState extends State<CategorizedLogsView> {
               children: [
                 Expanded(
                   child: TextField(
+                    controller: _searchController,
                     decoration: InputDecoration(
                       hintText: _category == LogCategory.live
                           ? 'Filter live events...'
@@ -188,52 +198,64 @@ class _CategorizedLogsViewState extends State<CategorizedLogsView> {
     required bool active,
     required Color activeColor,
   }) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final foreground =
+        active ? Colors.white : (dark ? Colors.white : AppPalette.navy);
     return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _category = category),
-        child: AnimatedContainer(
-          duration: MediaQuery.disableAnimationsOf(context)
-              ? Duration.zero
-              : const Duration(milliseconds: 220),
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: active ? activeColor : Colors.transparent,
+      child: Semantics(
+          button: true,
+          selected: active,
+          child: InkWell(
+            key: ValueKey('log-category-${category.name}'),
             borderRadius: BorderRadius.circular(12),
-            boxShadow: active
-                ? [
-                    BoxShadow(
-                      color: activeColor.withValues(alpha: 0.35),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    )
-                  ]
-                : null,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              iconWidget,
-              const SizedBox(width: 6),
-              Flexible(
-                  child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  color: active
-                      ? Colors.white
-                      : (Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white70
-                          : Colors.black87),
-                ),
-              )),
-            ],
-          ),
-        ),
-      ),
+            onTap: () => setState(() => _category = category),
+            child: AnimatedContainer(
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 220),
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: active
+                    ? activeColor
+                    : (dark ? const Color(0xFF20304A) : Colors.white),
+                border: Border.all(
+                    color: active
+                        ? activeColor
+                        : (dark ? const Color(0xFF52647C) : AppPalette.border)),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: active
+                    ? [
+                        BoxShadow(
+                          color: activeColor.withValues(alpha: 0.35),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        )
+                      ]
+                    : null,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconTheme(
+                      data: IconThemeData(color: foreground),
+                      child: iconWidget),
+                  const SizedBox(width: 6),
+                  Flexible(
+                      child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: foreground,
+                    ),
+                  )),
+                ],
+              ),
+            ),
+          )),
     );
   }
 
@@ -317,7 +339,8 @@ class _CategorizedLogsViewState extends State<CategorizedLogsView> {
 
     if (filtered.isEmpty) {
       return Center(
-        child: Padding(
+        child: SingleChildScrollView(
+            child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -327,6 +350,7 @@ class _CategorizedLogsViewState extends State<CategorizedLogsView> {
               const SizedBox(height: 12),
               const Text(
                 'No events match your filter',
+                textAlign: TextAlign.center,
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
               const SizedBox(height: 4),
@@ -337,7 +361,7 @@ class _CategorizedLogsViewState extends State<CategorizedLogsView> {
               ),
             ],
           ),
-        ),
+        )),
       );
     }
 
@@ -368,6 +392,7 @@ class _CategorizedLogsViewState extends State<CategorizedLogsView> {
             ),
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Event icon or animated red triangle for alerts
               if (item.isWarning)
@@ -395,29 +420,23 @@ class _CategorizedLogsViewState extends State<CategorizedLogsView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            item.title,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                              color:
-                                  item.isWarning ? Colors.red.shade800 : null,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Text(
-                          _relativeTime(item.timestamp),
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: isDark ? Colors.white60 : Colors.black54,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      item.title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: item.isWarning ? Colors.red.shade800 : null,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _relativeTime(item.timestamp),
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isDark ? Colors.white60 : Colors.black54,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -426,7 +445,7 @@ class _CategorizedLogsViewState extends State<CategorizedLogsView> {
                         fontSize: 11,
                         color: isDark ? Colors.white70 : Colors.black54,
                       ),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
@@ -438,10 +457,35 @@ class _CategorizedLogsViewState extends State<CategorizedLogsView> {
                   widget.onBlockDomain != null) ...[
                 const SizedBox(width: 8),
                 IconButton(
-                  tooltip: 'Block domain',
+                  tooltip: widget.isDomainBlocked?.call(item.title) == true
+                      ? 'Domain already blocked'
+                      : 'Block domain',
                   icon: const Icon(Icons.shield_outlined,
                       size: 18, color: Colors.red),
-                  onPressed: () => widget.onBlockDomain!(item.title),
+                  onPressed: widget.isDomainBlocked?.call(item.title) == true
+                      ? null
+                      : () => widget.onBlockDomain!(item.title),
+                ),
+              ],
+              if (item.type == _LiveEventType.app &&
+                  widget.onBlockApp != null) ...[
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: widget.isAppBlocked?.call(
+                              (item.rawEvent as AppUsageLog).packageName) ==
+                          true
+                      ? 'App already blocked'
+                      : 'Block app',
+                  icon: const Icon(Icons.app_blocking_outlined,
+                      size: 18, color: AppPalette.red),
+                  onPressed: widget.isAppBlocked?.call(
+                              (item.rawEvent as AppUsageLog).packageName) ==
+                          true
+                      ? null
+                      : () {
+                          final log = item.rawEvent as AppUsageLog;
+                          widget.onBlockApp!(log.packageName, item.title);
+                        },
                 ),
               ],
             ],
@@ -498,15 +542,15 @@ class _LiveEventItem {
 }
 
 class _LivePulseDot extends StatelessWidget {
-  const _LivePulseDot();
+  const _LivePulseDot({required this.color});
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     Widget dot = Container(
         width: 8,
         height: 8,
-        decoration: const BoxDecoration(
-            color: AppPalette.blue, shape: BoxShape.circle));
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle));
     if (!MediaQuery.disableAnimationsOf(context)) {
       dot = dot
           .animate(onPlay: (controller) => controller.repeat(reverse: true))

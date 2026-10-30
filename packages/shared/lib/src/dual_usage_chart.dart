@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'models.dart';
+import 'usage_breakdown.dart';
 
 /// Daily totals and hourly usage points with a prior-day comparison.
 class DualUsageChart extends StatefulWidget {
@@ -14,6 +15,7 @@ class DualUsageChart extends StatefulWidget {
     this.primaryColor,
     this.secondaryColor,
     this.initialMode = DualChartMode.daily,
+    this.showAppBreakdown = true,
   });
 
   final List<AppUsageLog> logs;
@@ -21,6 +23,7 @@ class DualUsageChart extends StatefulWidget {
   final Color? primaryColor;
   final Color? secondaryColor;
   final DualChartMode initialMode;
+  final bool showAppBreakdown;
 
   @override
   State<DualUsageChart> createState() => _DualUsageChartState();
@@ -95,30 +98,31 @@ class _DualUsageChartState extends State<DualUsageChart> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Header with title and stats
-        Row(
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.title,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${DateFormat('EEEE, MMM d').format(selectedDay)}: ${_formatDuration(selectedDaySeconds)}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: primary,
-                      fontWeight: FontWeight.bold,
-                    ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${DateFormat('EEEE, MMM d').format(selectedDay)}: ${_formatDuration(selectedDaySeconds)}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: primary,
+                    fontWeight: FontWeight.bold,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+            const SizedBox(height: 8),
             _buildChangeIndicator(
               changeSeconds: changeSeconds,
               changePercent: changePercent,
@@ -139,8 +143,8 @@ class _DualUsageChartState extends State<DualUsageChart> {
           ),
           child: Row(
             children: [
-              _buildModePill(DualChartMode.daily, 'Daily', primary),
-              _buildModePill(DualChartMode.hourly, 'Hourly', primary),
+              _buildModePill(DualChartMode.daily, 'Daily'),
+              _buildModePill(DualChartMode.hourly, 'Hourly'),
             ],
           ),
         ),
@@ -180,6 +184,7 @@ class _DualUsageChartState extends State<DualUsageChart> {
                   _selectedDayIndex = index;
                   _hoveredHour = null;
                 });
+                _showDayUsage(days[index]);
               },
             ),
           ),
@@ -268,27 +273,88 @@ class _DualUsageChartState extends State<DualUsageChart> {
             ),
           ],
         ],
+        if (widget.showAppBreakdown) ...[
+          const SizedBox(height: 16),
+          _buildDayUsage(selectedDay),
+        ],
       ],
     );
   }
 
   int _secondsBetween(DateTime from, DateTime to) {
-    var total = 0;
-    for (final log in widget.logs) {
-      final start = log.startedAt.toLocal();
-      final seconds = math.max(
-          0,
-          log.durationSeconds ??
-              log.endedAt?.difference(log.startedAt).inSeconds ??
-              0);
-      final end = start.add(Duration(seconds: seconds));
-      final overlapStart = start.isAfter(from) ? start : from;
-      final overlapEnd = end.isBefore(to) ? end : to;
-      if (overlapEnd.isAfter(overlapStart)) {
-        total += overlapEnd.difference(overlapStart).inSeconds;
-      }
-    }
-    return total;
+    return UsageBreakdown.between(widget.logs, from, to).totalSeconds;
+  }
+
+  void _showDayUsage(DateTime day) {
+    showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        isScrollControlled: true,
+        constraints:
+            BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .85),
+        builder: (_) => SafeArea(
+            child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: _buildDayUsage(day))));
+  }
+
+  Widget _buildDayUsage(DateTime day) {
+    final usage = UsageBreakdown.between(
+        widget.logs, day, DateTime(day.year, day.month, day.day + 1));
+    return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('Apps used · ${DateFormat('EEE, MMM d').format(day)}',
+              style: const TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          Text(
+              '${_formatDuration(usage.totalSeconds)} total recorded screen time',
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          const Text('Overlapping sessions count once in the total.'),
+          if (usage.apps.isEmpty)
+            const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Text('No app usage recorded for this day.')),
+          for (final app in usage.apps) ...[
+            const SizedBox(height: 10),
+            Material(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                    leading: const Icon(Icons.apps_rounded),
+                    title: Text(app.label),
+                    subtitle: Text(
+                        '${_formatDuration(app.seconds)} · ${app.sessions.length} session${app.sessions.length == 1 ? '' : 's'}'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => showDialog<void>(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                                title: Text(app.label),
+                                content: SingleChildScrollView(
+                                    child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                      Text(
+                                          '${DateFormat('MMM d').format(day)} · ${_formatDuration(app.seconds)}'),
+                                      for (final session in app.sessions)
+                                        Padding(
+                                            padding:
+                                                const EdgeInsets.only(top: 12),
+                                            child: Text(
+                                                '${DateFormat('h:mm a').format(session.start)} – ${DateFormat('h:mm a').format(session.end)}\n${_formatDuration(session.seconds)}'))
+                                    ])),
+                                actions: [
+                                  TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('Done'))
+                                ])))),
+          ],
+        ]);
   }
 
   Widget _buildChangeIndicator({
@@ -369,43 +435,66 @@ class _DualUsageChartState extends State<DualUsageChart> {
     );
   }
 
-  Widget _buildModePill(DualChartMode mode, String label, Color activeColor) {
+  Widget _buildModePill(DualChartMode mode, String label) {
     final active = _mode == mode;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    const selectedBackground = Color(0xFF1746A2);
+    final foreground =
+        active ? Colors.white : (dark ? Colors.white : const Color(0xFF172B4D));
     return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _mode = mode),
-        child: AnimatedContainer(
-          duration: MediaQuery.disableAnimationsOf(context)
-              ? Duration.zero
-              : const Duration(milliseconds: 200),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: active ? activeColor : Colors.transparent,
+      child: Semantics(
+          button: true,
+          selected: active,
+          child: InkWell(
+            key: ValueKey('usage-mode-${mode.name}'),
             borderRadius: BorderRadius.circular(8),
-            boxShadow: active
-                ? [
-                    BoxShadow(
-                      color: activeColor.withValues(alpha: 0.35),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
-                    )
-                  ]
-                : null,
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: active
-                  ? Colors.white
-                  : (Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white70
-                      : Colors.black87),
+            onTap: () => setState(() => _mode = mode),
+            child: AnimatedContainer(
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 200),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: active
+                    ? selectedBackground
+                    : (dark ? const Color(0xFF20304A) : Colors.white),
+                border: Border.all(
+                    color: active
+                        ? selectedBackground
+                        : (dark
+                            ? const Color(0xFF52647C)
+                            : const Color(0xFFCBD5E1))),
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: active
+                    ? [
+                        BoxShadow(
+                          color: selectedBackground.withValues(alpha: 0.22),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        )
+                      ]
+                    : null,
+              ),
+              child:
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(
+                    mode == DualChartMode.daily
+                        ? Icons.calendar_today_outlined
+                        : Icons.schedule_outlined,
+                    color: foreground,
+                    size: 16),
+                const SizedBox(width: 6),
+                Flexible(
+                    child: Text(label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: foreground))),
+              ]),
             ),
-          ),
-        ),
-      ),
+          )),
     );
   }
 }
@@ -445,6 +534,7 @@ class _DailyBarChartWidget extends StatelessWidget {
 
         return Expanded(
           child: GestureDetector(
+            key: ValueKey('usage-day-$i'),
             behavior: HitTestBehavior.opaque,
             onTap: () => onSelectDay(i),
             child: Padding(
@@ -524,7 +614,7 @@ class _DailyBarChartWidget extends StatelessWidget {
                     child: FittedBox(
                         fit: BoxFit.scaleDown,
                         child: Text(
-                          DateFormat('E').format(day),
+                          i == 6 ? 'Today' : DateFormat('E').format(day),
                           maxLines: 1,
                           style: TextStyle(
                             fontSize: 10,

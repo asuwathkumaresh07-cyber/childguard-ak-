@@ -1,70 +1,33 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:not_static_icons/not_static_icons.dart' as pets;
 import 'package:shared/shared.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'companion_break.dart';
-
-enum CompanionPet { cat, dog, bird }
-
-extension CompanionPetLabel on CompanionPet {
-  String get petName => switch (this) {
-        CompanionPet.cat => 'Milo',
-        CompanionPet.dog => 'Buddy',
-        CompanionPet.bird => 'Pip'
-      };
-  String get label => switch (this) {
-        CompanionPet.cat => 'Milo the cat',
-        CompanionPet.dog => 'Buddy the puppy',
-        CompanionPet.bird => 'Pip the bird'
-      };
-}
+import 'focus_timer.dart';
+import 'learning_game.dart';
+import 'companion_pet.dart';
+import 'animated_companion_pet.dart';
+import '../services/activity_rewards.dart';
+export 'companion_pet.dart';
 
 class CompanionPetAvatar extends StatelessWidget {
-  const CompanionPetAvatar({super.key, required this.pet, this.size = 82});
+  const CompanionPetAvatar(
+      {super.key,
+      required this.pet,
+      this.size = 82,
+      this.behavior = PetBehavior.curious});
   final CompanionPet pet;
   final double size;
+  final PetBehavior behavior;
 
   @override
-  Widget build(BuildContext context) {
-    final reduced = MediaQuery.disableAnimationsOf(context);
-    Widget artwork = switch (pet) {
-      CompanionPet.cat => pets.CatIcon(
-          size: size * .7,
-          color: AppPalette.blue,
-          infiniteLoop: !reduced,
-          interactive: false,
-          animationDuration: const Duration(milliseconds: 2800)),
-      CompanionPet.dog => pets.DogIcon(
-          size: size * .7,
-          color: AppPalette.blue,
-          infiniteLoop: !reduced,
-          interactive: false,
-          animationDuration: const Duration(milliseconds: 2800)),
-      CompanionPet.bird => pets.BirdIcon(
-          size: size * .7,
-          color: AppPalette.blue,
-          infiniteLoop: !reduced,
-          interactive: false,
-          animationDuration: const Duration(milliseconds: 2800)),
-    };
-    artwork = Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-            color: AppPalette.paleBlue,
-            borderRadius: BorderRadius.circular(size * .3),
-            border: Border.all(color: AppPalette.border)),
-        child: Center(child: artwork));
-    if (!reduced) {
-      artwork = artwork
-          .animate(onPlay: (controller) => controller.repeat(reverse: true))
-          .moveY(begin: -2, end: 2, duration: 1800.ms, curve: Curves.easeInOut);
-    }
-    return Semantics(
-        label: pet.label, image: true, child: IgnorePointer(child: artwork));
-  }
+  Widget build(BuildContext context) => Semantics(
+      label: pet.label,
+      image: true,
+      child: IgnorePointer(
+          child:
+              AnimatedCompanionPet(pet: pet, size: size, behavior: behavior)));
 }
 
 /// Reminders are derived from synced tasks and current device status.
@@ -97,7 +60,7 @@ class ChildCompanionCard extends StatefulWidget {
 }
 
 class _ChildCompanionCardState extends State<ChildCompanionCard> {
-  CompanionPet _pet = CompanionPet.cat;
+  CompanionPet _pet = CompanionPet.hamster;
   Offset _petOffset = Offset.zero;
   bool _cheering = false;
   Timer? _cheerTimer;
@@ -125,12 +88,8 @@ class _ChildCompanionCardState extends State<ChildCompanionCard> {
   }
 
   Future<void> _loadPet() async {
-    final preferences = await SharedPreferences.getInstance();
-    final saved = preferences.getString(_preferenceKey);
-    if (!mounted) return;
-    setState(() => _pet =
-        CompanionPet.values.where((pet) => pet.name == saved).firstOrNull ??
-            CompanionPet.cat);
+    final selected = await loadCompanionPet(widget.childId);
+    if (mounted) setState(() => _pet = selected);
   }
 
   Future<void> _choosePet() async {
@@ -160,7 +119,15 @@ class _ChildCompanionCardState extends State<ChildCompanionCard> {
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         children: [
-                          for (final pet in CompanionPet.values)
+                          for (final pet in const [
+                            CompanionPet.hamster,
+                            CompanionPet.robot,
+                            CompanionPet.fox,
+                            CompanionPet.teddy,
+                            CompanionPet.cat,
+                            CompanionPet.pajamas,
+                            CompanionPet.summer,
+                          ])
                             Semantics(
                                 button: true,
                                 selected: _pet == pet,
@@ -186,7 +153,7 @@ class _ChildCompanionCardState extends State<ChildCompanionCard> {
                                                 CompanionPetAvatar(
                                                     pet: pet, size: 58),
                                                 const SizedBox(height: 10),
-                                                Text(pet.label,
+                                                Text(pet.outfitLabel,
                                                     textAlign:
                                                         TextAlign.center),
                                               ]))),
@@ -198,6 +165,7 @@ class _ChildCompanionCardState extends State<ChildCompanionCard> {
     setState(() => _pet = selected);
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString(_preferenceKey, selected.name);
+    petSelectionChanged.value++;
   }
 
   @override
@@ -278,7 +246,11 @@ class _ChildCompanionCardState extends State<ChildCompanionCard> {
                         duration: MediaQuery.disableAnimationsOf(context)
                             ? Duration.zero
                             : const Duration(milliseconds: 200),
-                        child: CompanionPetAvatar(pet: _pet))))),
+                        child: CompanionPetAvatar(
+                            pet: _pet,
+                            behavior: _cheering
+                                ? PetBehavior.jumping
+                                : PetBehavior.curious))))),
         const SizedBox(width: 14),
         Expanded(
             child:
@@ -324,12 +296,36 @@ class _ChildCompanionCardState extends State<ChildCompanionCard> {
                 subtitle: _text('Feelings & help', 'मन और मदद'),
                 onTap: widget.onCheckIn),
             _actionTile(
+                icon: Icons.school_outlined,
+                title: 'Learning quest',
+                subtitle: 'Play & discover',
+                onTap: () => showDialog<void>(
+                    context: context,
+                    builder: (_) => LearningGame(
+                          onCompleted: (score) => unawaited(
+                              ActivityRewards.record(
+                                  widget.childId, BuddyActivity.quiz,
+                                  correctAnswers: score)),
+                        ))),
+            _actionTile(
                 icon: Icons.air,
                 title: _text('Tiny break', 'छोटा विराम'),
                 subtitle: _text('30 calm seconds', '30 शांत सेकंड'),
                 onTap: () => showDialog<void>(
                     context: context,
-                    builder: (_) => CompanionBreakDialog(hindi: widget.hindi))),
+                    builder: (_) => CompanionBreakDialog(
+                        hindi: widget.hindi,
+                        onCompleted: () => unawaited(ActivityRewards.record(
+                            widget.childId, BuddyActivity.breathing))))),
+            _actionTile(
+                icon: Icons.timer_outlined,
+                title: _text('Focus timer', 'फोकस टाइमर'),
+                subtitle: _text('5–15 calm minutes', '5–15 शांत मिनट'),
+                onTap: () => showDialog<void>(
+                    context: context,
+                    builder: (_) => FocusTimerDialog(
+                        onCompleted: () => unawaited(ActivityRewards.record(
+                            widget.childId, BuddyActivity.focus))))),
           ]),
     ]));
   }

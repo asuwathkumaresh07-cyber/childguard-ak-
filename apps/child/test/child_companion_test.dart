@@ -120,6 +120,10 @@ void main() {
         ])));
     await tester.pumpAndSettle();
     expect(find.textContaining('Read a chapter'), findsOneWidget);
+    await tester.runAsync(() => precacheImage(
+        AssetImage(CompanionPet.corgi.assetPath),
+        tester.element(find.byType(ChildCompanionCard))));
+    await tester.pump();
     if (Platform.environment['SAVE_CHILD_PREVIEW'] == '1') {
       final boundary = tester.renderObject<RenderRepaintBoundary>(
           find.byKey(const ValueKey('child-buddy-preview')));
@@ -139,12 +143,12 @@ void main() {
     await tester.ensureVisible(find.byTooltip('Choose a pet'));
     await tester.tap(find.byTooltip('Choose a pet'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Buddy the puppy'));
-    await tester.tap(find.text('Buddy the puppy'));
+    await tester.ensureVisible(find.text('Summer outfit'));
+    await tester.tap(find.text('Summer outfit'));
     await tester.pumpAndSettle();
-    expect(find.text('Buddy, your buddy'), findsOneWidget);
+    expect(find.text('Milo, your buddy'), findsOneWidget);
     final preferences = await SharedPreferences.getInstance();
-    expect(preferences.getString('child_companion_child-a'), 'dog');
+    expect(preferences.getString('child_companion_child-a'), 'summer');
     expect(preferences.getString('child_companion_child-b'), isNull);
     expect(tester.takeException(), isNull);
   });

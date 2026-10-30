@@ -59,6 +59,7 @@ class ChildActivityChart extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         DualUsageChart(
+          showAppBreakdown: false,
           logs: logs,
           title: _hindi ? 'आपका स्क्रीन समय' : 'Your screen time',
           initialMode: DualChartMode.daily,

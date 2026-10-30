@@ -42,11 +42,15 @@ class VpnStatusBadge extends StatelessWidget {
         icon,
         const SizedBox(width: 8),
         Expanded(
-            child: Text(label,
-                style: TextStyle(color: color, fontWeight: FontWeight.w700))),
-        if (report != null)
-          Text(DateFormat('MMM d, h:mm a').format(report.lastSeenAt.toLocal()),
-              style: Theme.of(context).textTheme.labelSmall),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label,
+              style: TextStyle(color: color, fontWeight: FontWeight.w700)),
+          if (report != null)
+            Text(
+                DateFormat('MMM d, h:mm a').format(report.lastSeenAt.toLocal()),
+                style: Theme.of(context).textTheme.labelSmall),
+        ])),
       ]),
     );
   }

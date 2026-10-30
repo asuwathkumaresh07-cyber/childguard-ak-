@@ -1,7 +1,7 @@
 name: child
 description: Family Guard Child — protection VPN, block list, activity logging.
 publish_to: none
-version: 1.0.0+1
+version: 1.0.9+10
 
 environment:
   sdk: ^3.5.0
@@ -29,3 +29,11 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/branding/
+    - assets/pets/openpets/hoodie.webp
+    - assets/pets/openpets/pajamas.webp
+    - assets/pets/openpets/summer.webp
+    - assets/pets/openpets/LICENSE.txt
+    - assets/pets/openpets/source.json
+    - assets/pets/friends/

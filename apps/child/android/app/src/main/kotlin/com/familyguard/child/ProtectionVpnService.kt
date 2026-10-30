@@ -19,6 +19,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 
 class ProtectionVpnService : VpnService() {
+    private val warningStarted = mutableMapOf<String, Long>()
+    private var lastWarningToast = -5_000L
+    private var wasFriendly = false
     private var tunFd: ParcelFileDescriptor? = null
     private val running = AtomicBoolean(false)
     private var worker: Thread? = null
@@ -137,12 +140,30 @@ class ProtectionVpnService : VpnService() {
         val qname = parseDnsName(packet, dnsOffset, length) ?: return
         val domain = normalize(qname)
         val blocked = isBlocked(domain)
+        val now = android.os.SystemClock.elapsedRealtime()
+        val friendly = getSharedPreferences("safety_mode", MODE_PRIVATE).getString("mode", "strict") == "friendly"
+        if (friendly != wasFriendly) {
+            warningStarted.clear()
+            wasFriendly = friendly
+        }
+        // Block unsafe DNS immediately, but give a local warning before reporting.
+        warningStarted.entries.removeAll { now - it.value > 300_000L }
+        val started = warningStarted[domain]
+        val warning = blocked && friendly && (started == null || now - started < 20_000L)
+        if (warning && started == null) warningStarted[domain] = now
+        if (warning && now - lastWarningToast > 5_000L) {
+            lastWarningToast = now
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                android.widget.Toast.makeText(this, "This website breaks your family rules. Please leave now. Further attempts after 20 seconds are reported.", android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
+        // Local warnings never enter the parent activity queue.
         try {
-            activityDatabase.recordDomain(domain, if (blocked) "blocked" else "allowed", System.currentTimeMillis())
+            if (!warning) activityDatabase.recordDomain(domain, if (blocked) "blocked" else "allowed", System.currentTimeMillis())
         } catch (e: Exception) {
             Log.e(TAG, "Could not persist DNS activity for $domain", e)
         }
-        emitDomain(domain, if (blocked) "blocked" else "allowed")
+        emitDomain(domain, if (warning) "warning" else if (blocked) "blocked" else "allowed")
 
         if (blocked) {
             val response = buildNxDomain(packet, dnsOffset, dnsLen)

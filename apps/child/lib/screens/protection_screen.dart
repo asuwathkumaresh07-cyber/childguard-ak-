@@ -11,7 +11,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../native/protection_bridge.dart';
 import '../widgets/child_companion.dart';
+import '../widgets/companion_care.dart';
+import '../widgets/companion_care_state.dart';
 import '../widgets/companion_check_in.dart';
+import '../widgets/activity_rewards_card.dart';
+import '../services/activity_rewards.dart';
 
 class ProtectionScreen extends StatefulWidget {
   const ProtectionScreen({
@@ -44,10 +48,11 @@ class _ProtectionScreenState extends State<ProtectionScreen>
   List<ZoneAppRule> _zoneAppRules = [];
   List<ChildTask> _tasks = [];
   List<ChildMoodCheckin> _moodCheckins = [];
-  List<ChildTemporaryAppUnlock> _appUnlocks = [];
   ChildStreak? _streak;
   List<AppUsageLog> _activityLogs = [];
   String _protectionMode = 'strict';
+  Timer? _friendlyZoneTimer;
+  String? _friendlyForeground;
   Map<String, int> _dailyUsageSeconds = {};
   Map<String, int> _approvedExtraSeconds = {};
   bool _loading = true;
@@ -70,6 +75,60 @@ class _ProtectionScreenState extends State<ProtectionScreen>
   bool get _hindi => widget.localeCode == 'hi';
 
   String _text(String english, String hindi) => _hindi ? hindi : english;
+
+  Future<void> _confirmSignOut() async {
+    final passwordController = TextEditingController();
+    try {
+      final password = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Confirm sign out'),
+          content: TextField(
+            controller: passwordController,
+            obscureText: true,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'Child account password',
+              hintText: 'Enter your password to sign out',
+              prefixIcon: LiveIcon(Icons.lock_outline),
+            ),
+            onSubmitted: (_) => Navigator.pop(
+              dialogContext,
+              passwordController.text,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(
+                dialogContext,
+                passwordController.text,
+              ),
+              child: const Text('Sign out'),
+            ),
+          ],
+        ),
+      );
+      if (password == null || password.isEmpty) return;
+      await _auth.verifyCurrentPassword(password);
+      await _auth.signOut();
+    } catch (error) {
+      debugPrint('Child sign-out verification failed: $error');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content:
+                Text('Password was not accepted. You are still signed in.'),
+          ),
+        );
+      }
+    } finally {
+      passwordController.dispose();
+    }
+  }
 
   StreamSubscription<DomainEvent>? _domainSub;
   StreamSubscription<AppUsageEvent>? _usageSub;
@@ -123,6 +182,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
 
   @override
   void dispose() {
+    _friendlyZoneTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _domainSub?.cancel();
     _usageSub?.cancel();
@@ -163,7 +223,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
             _zones,
             _zoneAppRules,
             null,
-            _appUnlocks,
+            _extraTimeRequests,
           ),
         );
       }
@@ -218,7 +278,6 @@ class _ProtectionScreenState extends State<ProtectionScreen>
       List<ZoneAppRule> zoneAppRules = [];
       List<ChildTask> tasks = [];
       List<ChildMoodCheckin> moodCheckins = [];
-      List<ChildTemporaryAppUnlock> appUnlocks = [];
       ChildStreak? streak;
       Map<String, int> dailyUsage = {};
       Map<String, int> approvedExtraSeconds = {};
@@ -262,17 +321,19 @@ class _ProtectionScreenState extends State<ProtectionScreen>
             childId: profile.id,
           );
           streak = await _family.fetchChildStreak(profile.id);
-          appUnlocks = await _family.fetchActiveChildAppUnlocks(profile.id);
           _protectionMode = await _family.fetchChildProtectionMode(
             familyId: family.id,
             childId: profile.id,
           );
-          approvedExtraSeconds = _approvedExtraTime(extraTimeRequests);
+          approvedExtraSeconds =
+              _approvedExtraTime(extraTimeRequests, parentId: family.ownerId);
         }
+        await _bridge.setProtectionMode(_protectionMode);
         await _bridge.updateBlockList(blocked);
         await _bridge.updateBlockedApps(
           _effectiveBlockedApps(
-              apps, zones, zoneAppRules, _lastPosition, appUnlocks),
+              apps, zones, zoneAppRules, _lastPosition, extraTimeRequests,
+              parentId: family.ownerId),
         );
         await _bridge.updateDailyAppLimits(
           _effectiveDailyLimits(timeLimits, approvedExtraSeconds),
@@ -297,7 +358,6 @@ class _ProtectionScreenState extends State<ProtectionScreen>
         _zoneAppRules = zoneAppRules;
         _tasks = tasks;
         _moodCheckins = moodCheckins;
-        _appUnlocks = appUnlocks;
         _streak = streak;
         _dailyUsageSeconds = dailyUsage;
         _approvedExtraSeconds = approvedExtraSeconds;
@@ -320,7 +380,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
       ));
       _deviceStatusTimer ??= Timer.periodic(
         const Duration(seconds: 30),
-        (_) => unawaited(_reportDeviceStatus()),
+        (_) => unawaited(_refreshPermissions()),
       );
       if (shareLocation && family != null) {
         await _startLocationSharing();
@@ -362,7 +422,6 @@ class _ProtectionScreenState extends State<ProtectionScreen>
       var zoneAppRules = _zoneAppRules;
       var tasks = _tasks;
       var moodCheckins = _moodCheckins;
-      var appUnlocks = _appUnlocks;
       var streak = _streak;
       var protectionMode = _protectionMode;
       if (_family.isUsingSupabase && profile != null) {
@@ -399,9 +458,9 @@ class _ProtectionScreenState extends State<ProtectionScreen>
           childId: profile.id,
         );
         streak = await _family.fetchChildStreak(profile.id);
-        appUnlocks = await _family.fetchActiveChildAppUnlocks(profile.id);
         extraSeconds = _approvedExtraTime(extraRequests);
       }
+      await _bridge.setProtectionMode(protectionMode);
       await _bridge.updateBlockList(blocked);
       await _bridge.updateDailyAppLimits(
         _effectiveDailyLimits(limits, extraSeconds),
@@ -412,7 +471,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
           zones,
           zoneAppRules,
           _lastPosition,
-          appUnlocks,
+          extraRequests,
         ),
       );
       if (mounted) {
@@ -426,7 +485,6 @@ class _ProtectionScreenState extends State<ProtectionScreen>
           _zoneAppRules = zoneAppRules;
           _tasks = tasks;
           _moodCheckins = moodCheckins;
-          _appUnlocks = appUnlocks;
           _streak = streak;
           _protectionMode = protectionMode;
           _dailyUsageSeconds = dailyUsage;
@@ -495,7 +553,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
           const [],
           const [],
           null,
-          _appUnlocks,
+          _extraTimeRequests,
         ),
       );
       return;
@@ -650,22 +708,37 @@ class _ProtectionScreenState extends State<ProtectionScreen>
     List<FamilyZone> zones,
     List<ZoneAppRule> rules,
     Position? position,
-    List<ChildTemporaryAppUnlock> appUnlocks,
-  ) {
+    List<ExtraTimeRequest> rewardRequests, {
+    String? parentId,
+  }) {
     final now = DateTime.now();
-    final unlockedPackages = appUnlocks
-        .where((unlock) => unlock.expiresAt.isAfter(now))
-        .map((unlock) => unlock.packageName)
-        .toSet();
-    final filteredBaseApps = baseApps
-        .where((packageName) => !unlockedPackages.contains(packageName));
-    if (!_locationSharing || position == null) return filteredBaseApps.toList();
-    final activeZones = _zonesForPosition(position, zones);
-    return {
-      ...filteredBaseApps,
+    final activeZones = _locationSharing && position != null
+        ? _zonesForPosition(position, zones)
+        : <String>{};
+    final allBlocked = {
+      ...baseApps,
       for (final rule in rules)
         if (activeZones.contains(rule.zoneId)) rule.packageName,
-    }.where((packageName) => !unlockedPackages.contains(packageName)).toList();
+    };
+    final access = <String, int>{};
+    for (final request in rewardRequests) {
+      if (!allBlocked.contains(request.packageName) ||
+          !isParentApprovedReward(
+              request, parentId ?? _familyModel?.ownerId, now)) {
+        continue;
+      }
+      final expiry = request.resolvedAt!
+          .add(Duration(minutes: request.grantedMinutes!))
+          .millisecondsSinceEpoch;
+      if (expiry > now.millisecondsSinceEpoch &&
+          expiry > (access[request.packageName] ?? 0)) {
+        access[request.packageName] = expiry;
+      }
+    }
+    // Keep the blocked list intact; Android enforces the approval expiry even
+    // while the Flutter screen is closed.
+    _bridge.parentAccessUntil = access;
+    return allBlocked.toList();
   }
 
   Future<void> _processLocation(Position position) async {
@@ -707,7 +780,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
           _zones,
           _zoneAppRules,
           position,
-          _appUnlocks,
+          _extraTimeRequests,
         ),
       );
     } catch (error) {
@@ -762,33 +835,35 @@ class _ProtectionScreenState extends State<ProtectionScreen>
     }
   }
 
-  Future<void> _showMoodCheckinDialog() async {
+  Future<bool> _showMoodCheckinDialog() async {
     final profile = _profile;
     final family = _familyModel;
-    if (_sendingCheckIn) return;
+    if (_sendingCheckIn) return false;
     if (profile == null || family == null || !_family.isUsingSupabase) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(_text(
               'Connect your family account to share a check-in.',
               'चेक-इन भेजने के लिए पारिवारिक खाता जोड़ें।'))));
-      return;
+      return false;
     }
     _sendingCheckIn = true;
     try {
       final response = await showDialog<CompanionCheckIn>(
           context: context,
           builder: (_) => CompanionCheckInDialog(hindi: _hindi));
-      if (response == null) return;
+      if (response == null) return false;
       await _family.createChildMoodCheckin(
           familyId: family.id,
           childId: profile.id,
           mood: response.mood,
           note: response.note);
-      if (!mounted) return;
+      await ActivityRewards.record(profile.id, BuddyActivity.checkIn);
+      if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(_text('Your check-in was shared with your parent.',
               'आपका चेक-इन माता-पिता को भेज दिया गया है।'))));
       await _syncRules();
+      return true;
     } catch (error) {
       debugPrint('Sending child check-in failed: $error');
       if (mounted) {
@@ -796,18 +871,31 @@ class _ProtectionScreenState extends State<ProtectionScreen>
             content: Text(_text('Check-in could not be sent. Please try again.',
                 'चेक-इन नहीं भेजा जा सका। फिर कोशिश करें।'))));
       }
+      return false;
     } finally {
       _sendingCheckIn = false;
     }
   }
 
-  bool get _moodCheckinDue => !_moodCheckins.any((checkIn) =>
-      DateUtils.isSameDay(checkIn.createdAt.toLocal(), DateTime.now()));
+  bool get _moodCheckinDue {
+    if (_moodCheckins.isEmpty) return true;
+    final latest = _moodCheckins
+        .map((checkIn) => checkIn.createdAt.toLocal())
+        .reduce((a, b) => a.isAfter(b) ? a : b);
+    return DateTime.now().difference(latest) >=
+        CompanionCareState.checkInInterval;
+  }
 
   Map<String, int> _effectiveDailyLimits(
     List<AppTimeLimit> limits,
     Map<String, int> approvedExtraSeconds,
   ) {
+    _bridge.baseDailyLimits = {
+      for (final limit in limits) limit.packageName: limit.dailyLimitSeconds
+    };
+    final now = DateTime.now();
+    _bridge.extraTimeExpiresAt =
+        DateTime(now.year, now.month, now.day + 1).millisecondsSinceEpoch;
     return {
       for (final limit in limits)
         limit.packageName: limit.dailyLimitSeconds +
@@ -815,29 +903,16 @@ class _ProtectionScreenState extends State<ProtectionScreen>
     };
   }
 
-  Map<String, int> _approvedExtraTime(List<ExtraTimeRequest> requests) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final seconds = <String, int>{};
-    for (final request in requests) {
-      final resolvedAt = request.resolvedAt?.toLocal();
-      final grantedMinutes = request.grantedMinutes;
-      if (request.status != 'approved' ||
-          resolvedAt == null ||
-          resolvedAt.isBefore(today) ||
-          grantedMinutes == null) {
-        continue;
-      }
-      seconds.update(
-        request.packageName,
-        (total) => total + grantedMinutes * 60,
-        ifAbsent: () => grantedMinutes * 60,
-      );
-    }
-    return seconds;
-  }
+  Map<String, int> _approvedExtraTime(List<ExtraTimeRequest> requests,
+          {String? parentId}) =>
+      parentApprovedExtraSeconds(
+          requests, parentId ?? _familyModel?.ownerId, DateTime.now());
 
   Future<void> _onDomainEvent(DomainEvent event) async {
+    if (event.action == 'warning' && mounted) {
+      setState(() => _status =
+          'This activity breaks your family rules. Please leave now. Continuing after 20 seconds will be reported to your parent.');
+    }
     unawaited(_flushPendingDomainEvents());
   }
 
@@ -879,6 +954,11 @@ class _ProtectionScreenState extends State<ProtectionScreen>
   }
 
   Future<void> _onUsageEvent(AppUsageEvent event) async {
+    if (event.durationSeconds == 0 &&
+        event.packageName != _friendlyForeground) {
+      _friendlyZoneTimer?.cancel();
+      _friendlyForeground = event.packageName;
+    }
     final family = _familyModel;
     final profile = _profile;
     if (family != null && profile != null && _activeZoneIds.isNotEmpty) {
@@ -889,6 +969,40 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                 _activeZoneIds.contains(rule.zoneId),
           )
           .firstOrNull;
+      if (matchingRule != null && _protectionMode == 'friendly') {
+        if (event.durationSeconds == 0 &&
+            !(_friendlyZoneTimer?.isActive ?? false)) {
+          if (mounted) {
+            setState(() => _status =
+                'This app breaks your focus rules. Leave within 20 seconds to avoid a parent alert.');
+          }
+          unawaited(_bridge.showFriendlyWarning(
+              'This app breaks your focus rules. Leave within 20 seconds to avoid a parent alert.'));
+          _friendlyZoneTimer = Timer(const Duration(seconds: 20), () {
+            if (!mounted ||
+                _protectionMode != 'friendly' ||
+                _friendlyForeground != event.packageName ||
+                !_activeZoneIds.contains(matchingRule.zoneId)) {
+              return;
+            }
+            final alertKey = '${matchingRule.zoneId}:${event.packageName}';
+            final lastAlert = _offTaskAlerts[alertKey];
+            final now = DateTime.now();
+            if (lastAlert != null &&
+                now.difference(lastAlert) < const Duration(minutes: 10)) {
+              return;
+            }
+            _offTaskAlerts[alertKey] = now;
+            unawaited(_reportOffTaskEvent(
+                familyId: family.id,
+                childId: profile.id,
+                zoneId: matchingRule.zoneId,
+                packageName: event.packageName));
+          });
+        }
+        unawaited(_flushPendingUsageEvents());
+        return;
+      }
       if (matchingRule != null) {
         final alertKey = '${matchingRule.zoneId}:${event.packageName}';
         final lastAlert = _offTaskAlerts[alertKey];
@@ -1017,7 +1131,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
       return;
     }
     try {
-      final status = await _family.createExtraTimeRequest(
+      await _family.createExtraTimeRequest(
         familyId: family.id,
         childId: profile.id,
         packageName: limit.packageName,
@@ -1029,9 +1143,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              status == 'approved'
-                  ? 'Extra time approved automatically based on your trust score.'
-                  : 'Extra-time request sent to your parent.',
+              'Extra-time request sent. Your parent must approve it.',
             ),
           ),
         );
@@ -1046,20 +1158,28 @@ class _ProtectionScreenState extends State<ProtectionScreen>
     }
   }
 
-  Future<void> _redeemTemporaryAppUnlock(String packageName) async {
+  Future<void> _requestTemporaryAppAccess(String packageName) async {
     final family = _familyModel;
-    if (family == null) return;
+    final profile = _profile;
+    if (family == null || profile == null) return;
     try {
-      final unlock = await _family.redeemChildTemporaryAppUnlock(
+      await _family.createExtraTimeRequest(
         familyId: family.id,
+        childId: profile.id,
         packageName: packageName,
+        appLabel: _activityLogs
+                .where((log) => log.packageName == packageName)
+                .firstOrNull
+                ?.appLabel ??
+            packageName,
+        requestedMinutes: 15,
       );
       await _syncRules();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '${unlock.packageName} unlocked for 15 minutes.',
+              'App access requested for 15 minutes. Your parent must approve it.',
             ),
           ),
         );
@@ -1289,7 +1409,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                   ),
                   const SizedBox(height: 16),
                   FilledButton.icon(
-                    onPressed: () => _auth.signOut(),
+                    onPressed: _confirmSignOut,
                     icon: const LiveIcon(Icons.logout),
                     label: const Text('Sign out'),
                   ),
@@ -1304,7 +1424,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: Colors.white,
       builder: (ctx) => FractionallySizedBox(
         heightFactor: 0.88,
         child: Container(
@@ -1495,7 +1615,9 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                   ),
                   title: Text(task.title),
                   subtitle: Text(
-                    '${task.description.isEmpty ? '' : '${task.description}\n'}${task.taskType == 'homework' ? 'Homework' : 'Task'} · ${_taskStatusLabel(task.status)}',
+                    '${task.description.isEmpty ? '' : '${task.description}\n'}${task.taskType == 'homework' ? 'Homework' : 'Task'} · ${task.points} points · ${_taskStatusLabel(task.status)}'
+                    '${task.dueAt == null ? '' : '\nDeadline: ${DateFormat('MMM d, h:mm a').format(task.dueAt!.toLocal())}'}'
+                    '${task.dueAt != null && task.dueAt!.isBefore(DateTime.now()) && (task.status == 'assigned' || task.status == 'rejected') ? ' · Overdue' : ''}',
                   ),
                   isThreeLine: task.description.isNotEmpty,
                   trailing:
@@ -1514,10 +1636,34 @@ class _ProtectionScreenState extends State<ProtectionScreen>
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => CompanionCare(
+      childId: _profile?.id,
+      enabled: !_loading && _error == null,
+      vpnEnabled: _vpnOn,
+      permissionsReady: _usageOk && _a11yOk,
+      latestCheckInAt: _moodCheckins.isEmpty
+          ? null
+          : (_moodCheckins.map((entry) => entry.createdAt).toList()..sort())
+              .last,
+      pendingTasks: _tasks
+          .where(
+              (task) => task.status == 'assigned' || task.status == 'rejected')
+          .length,
+      onCheckIn: _familyModel != null && _family.isUsingSupabase
+          ? _showMoodCheckinDialog
+          : null,
+      onProtection: () => setState(() => _selectedSection = 2),
+      onTasks: () => setState(() => _selectedSection = 1),
+      child: _buildPage(context));
+
+  Widget _buildPage(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        leading: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Image.asset('assets/branding/child-logo.png',
+                fit: BoxFit.contain, semanticLabel: 'Family Guard Child')),
         backgroundColor: Colors.white,
         foregroundColor: AppPalette.navy,
         surfaceTintColor: Colors.transparent,
@@ -1532,6 +1678,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
           _text('My tasks', 'मेरे काम'),
           _text('Focus', 'फ़ोकस'),
           _text('My profile', 'मेरी प्रोफ़ाइल'),
+          _text('Rewards', 'पुरस्कार'),
         ][_selectedSection]),
         actions: [
           IconButton(
@@ -1576,6 +1723,11 @@ class _ProtectionScreenState extends State<ProtectionScreen>
             selectedIcon: const LiveIcon(Icons.person_rounded),
             label: _text('Profile', 'प्रोफ़ाइल'),
           ),
+          NavigationDestination(
+            icon: const Icon(Icons.redeem_outlined),
+            selectedIcon: const Icon(Icons.redeem),
+            label: _text('Rewards', 'पुरस्कार'),
+          ),
         ],
       ),
       body: _loading
@@ -1605,7 +1757,9 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                   ),
                 )
               : CompanionBackdrop(
-                  child: _familyModel == null && _selectedSection != 0
+                  child: _familyModel == null &&
+                          _selectedSection != 0 &&
+                          _selectedSection != 4
                       ? _buildUnlinkedMessage()
                       : ListView(
                           padding: const EdgeInsets.all(16),
@@ -1831,7 +1985,7 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                                   subtitle: const Text(
                                     'Your parent can help if you need to sign back in.',
                                   ),
-                                  onTap: () => _auth.signOut(),
+                                  onTap: _confirmSignOut,
                                 ),
                               ),
                             ],
@@ -2098,17 +2252,17 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                                 Card(
                                   child: ListTile(
                                     leading: const LiveIcon(Icons.redeem),
-                                    title: const Text('Task streak rewards'),
+                                    title: const Text(
+                                        'Task rewards & parent approval'),
                                     subtitle: Text(
-                                      '${_streak!.bonusTimeMinutes} bonus minutes available for extra-time requests · ${_streak!.appUnlockCredits} temporary app unlock${_streak!.appUnlockCredits == 1 ? '' : 's'}',
+                                      '${_streak!.totalPoints} task points earned. Extra time and temporary app access require parent approval.',
                                     ),
-                                    trailing: _streak!.appUnlockCredits > 0 &&
-                                            _blockedApps.isNotEmpty
+                                    trailing: _blockedApps.isNotEmpty
                                         ? PopupMenuButton<String>(
                                             tooltip:
-                                                'Use a 15-minute app unlock',
+                                                'Ask parent for 15-minute app access',
                                             onSelected:
-                                                _redeemTemporaryAppUnlock,
+                                                _requestTemporaryAppAccess,
                                             itemBuilder: (context) =>
                                                 _blockedApps
                                                     .map(
@@ -2133,6 +2287,20 @@ class _ProtectionScreenState extends State<ProtectionScreen>
                             ],
                             if (_selectedSection == 1) ...[
                               _buildChildTasks(),
+                            ],
+                            if (_selectedSection == 4 && _profile != null) ...[
+                              ActivityRewardsCard(
+                                  key: ValueKey('rewards_${_profile!.id}'),
+                                  childId: _profile!.id,
+                                  tasks: _tasks,
+                                  streak: _streak),
+                              const SizedBox(height: 12),
+                              FilledButton.icon(
+                                  onPressed: () =>
+                                      setState(() => _selectedSection = 2),
+                                  icon: const Icon(Icons.lock_clock_outlined),
+                                  label: const Text(
+                                      'Use approved task time rewards in Focus')),
                             ],
                           ],
                         ),

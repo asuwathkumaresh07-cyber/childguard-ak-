@@ -34,6 +34,7 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
       _error = null;
@@ -63,7 +64,9 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
     final description = TextEditingController();
     final points = TextEditingController(text: '10');
     var taskType = 'task';
-    DateTime? dueAt;
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    DateTime? dueAt = DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 18);
+    String? validationError;
     try {
       final values = await showDialog<(String, String, int, String, DateTime?)>(
         context: context,
@@ -116,22 +119,28 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                       final selected = await showDatePicker(
                         context: context,
                         initialDate: dueAt ?? DateTime.now(),
-                        firstDate: DateTime.now().subtract(
-                          const Duration(days: 365),
-                        ),
+                        firstDate: DateUtils.dateOnly(DateTime.now()),
                         lastDate: DateTime.now().add(
                           const Duration(days: 3650),
                         ),
                       );
-                      if (selected != null) {
-                        setDialogState(() => dueAt = selected);
-                      }
+                      if (selected == null || !context.mounted) return;
+                      final time = await showTimePicker(
+                          context: context,
+                          initialTime:
+                              TimeOfDay.fromDateTime(dueAt ?? DateTime.now()));
+                      if (time == null || !context.mounted) return;
+                      setDialogState(() {
+                        dueAt = DateTime(selected.year, selected.month,
+                            selected.day, time.hour, time.minute);
+                        validationError = null;
+                      });
                     },
                     icon: const LiveIcon(Icons.calendar_month_outlined),
                     label: Text(
                       dueAt == null
-                          ? 'Add a due date'
-                          : 'Due ${DateFormat('MMM d, y').format(dueAt!)}',
+                          ? 'Add a deadline'
+                          : 'Due ${DateFormat('MMM d, y · h:mm a').format(dueAt!)}',
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -141,6 +150,10 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                     decoration:
                         const InputDecoration(labelText: 'Reward points'),
                   ),
+                  if (validationError != null)
+                    Text(validationError!,
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.error)),
                 ],
               ),
             ),
@@ -156,6 +169,13 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                       reward == null ||
                       reward < 0 ||
                       reward > 1000) {
+                    setDialogState(() => validationError =
+                        'Add a title and reward points from 0 to 1000.');
+                    return;
+                  }
+                  if (dueAt == null || !dueAt!.isAfter(DateTime.now())) {
+                    setDialogState(() => validationError =
+                        'Choose a future deadline, including the time.');
                     return;
                   }
                   Navigator.pop(
@@ -399,7 +419,8 @@ class _ChildTasksScreenState extends State<ChildTasksScreen> {
                         const SizedBox(height: 6),
                         Text(
                           '${task.taskType == 'homework' ? 'Homework' : 'Task'} · ${task.points} points · ${_statusLabel(task.status)}'
-                          '${task.dueAt == null ? '' : ' · Due ${DateFormat('MMM d').format(task.dueAt!.toLocal())}'}',
+                          '${task.dueAt == null ? '' : ' · Due ${DateFormat('MMM d, h:mm a').format(task.dueAt!.toLocal())}'}'
+                          '${task.dueAt != null && task.dueAt!.isBefore(DateTime.now()) && (task.status == 'assigned' || task.status == 'rejected') ? ' · Overdue' : ''}',
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],

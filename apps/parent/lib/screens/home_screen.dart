@@ -1,30 +1,38 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared/shared.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'block_list_screen.dart';
 import 'blocked_apps_screen.dart';
 import 'child_detail_screen.dart';
 import 'child_tasks_screen.dart';
 import 'parent_alerts_screen.dart';
+import 'rewards_screen.dart';
 import '../services/parent_push_service.dart';
 import '../widgets/user_error.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.familyService, this.authService});
+  final FamilyService? familyService;
+  final AuthService? authService;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final _family = FamilyService();
-  final _auth = AuthService();
+  late final _family = widget.familyService ?? FamilyService();
+  late final _auth = widget.authService ?? AuthService();
 
   Profile? _profile;
   Family? _familyModel;
   List<FamilyMember> _children = [];
+  Map<String, String> _childPasswords = {};
   bool _loading = true;
   bool _refreshInProgress = false;
   bool _pushRegistrationAttempted = false;
@@ -37,9 +45,46 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    unawaited(_loadChildPasswords());
     _refresh();
     _poll = Timer.periodic(
         const Duration(seconds: 30), (_) => _refresh(silent: true));
+  }
+
+  static const _childPasswordsKey = 'parent_child_login_passwords';
+
+  Future<void> _loadChildPasswords() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_childPasswordsKey);
+    if (!mounted || raw == null) return;
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      setState(() {
+        _childPasswords = decoded.map(
+          (key, value) => MapEntry(key, value.toString()),
+        );
+      });
+    } catch (_) {
+      // Ignore an invalid local credential cache and let the parent generate
+      // a new password when creating the next child account.
+    }
+  }
+
+  Future<void> _saveChildPassword(String childId, String password) async {
+    final next = {..._childPasswords, childId: password};
+    if (mounted) setState(() => _childPasswords = next);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_childPasswordsKey, jsonEncode(next));
+  }
+
+  String _generateChildPassword() {
+    const alphabet =
+        'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    final random = Random.secure();
+    return List.generate(
+      10,
+      (_) => alphabet[random.nextInt(alphabet.length)],
+    ).join();
   }
 
   @override
@@ -51,6 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _refresh({bool silent = false}) async {
+    if (!mounted) return;
     if (_refreshInProgress) return;
     _refreshInProgress = true;
     if (!silent) {
@@ -63,6 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await _family.reload();
       await _auth.ensureProfile();
       final profile = await _family.fetchMyProfile();
+      if (!mounted) return;
       if (profile != null && !profile.isParent) {
         reportAppError(
           'authorize parent dashboard',
@@ -85,10 +132,17 @@ class _HomeScreenState extends State<HomeScreen> {
         _familyModel = family;
         _children = kids;
         _loading = false;
+        _error = null;
       });
-      if (familyChanged && family != null) {
-        _subscribeToTamperEvents(family.id);
-        _subscribeToZoneEvents(family.id);
+      if (familyChanged) {
+        _tamperRealtimeSub?.unsubscribe();
+        _zoneRealtimeSub?.unsubscribe();
+        _tamperRealtimeSub = null;
+        _zoneRealtimeSub = null;
+        if (family != null) {
+          _subscribeToTamperEvents(family.id);
+          _subscribeToZoneEvents(family.id);
+        }
       }
       if (profile?.isParent == true &&
           _family.isUsingSupabase &&
@@ -247,8 +301,12 @@ class _HomeScreenState extends State<HomeScreen> {
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
+      constraints:
+          BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .85),
       builder: (context) => SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
+            child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -269,6 +327,62 @@ class _HomeScreenState extends State<HomeScreen> {
                   _profile!.email,
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
+              if (_children.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Child login passwords',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Share these credentials privately with each child.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                ..._children.map((child) {
+                  final profile = child.profile;
+                  final password = _childPasswords[child.profileId];
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const CircleAvatar(
+                      child: LiveIcon(Icons.child_care),
+                    ),
+                    title: Text(profile?.displayName ?? 'Child'),
+                    subtitle: Text(
+                      password == null
+                          ? (profile?.email ?? 'Password unavailable')
+                          : '${profile?.email ?? 'Child account'}\nPassword: $password',
+                    ),
+                    isThreeLine: password != null,
+                    trailing: password == null
+                        ? null
+                        : IconButton(
+                            tooltip: 'Copy child password',
+                            icon: const LiveIcon(Icons.copy),
+                            onPressed: () async {
+                              await Clipboard.setData(
+                                ClipboardData(text: password),
+                              );
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Child password copied.'),
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                  );
+                }),
+              ],
               const SizedBox(height: 12),
               ListTile(
                 leading: const LiveIcon(Icons.logout),
@@ -280,7 +394,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-        ),
+        )),
       ),
     );
   }
@@ -289,82 +403,97 @@ class _HomeScreenState extends State<HomeScreen> {
     final nameController = TextEditingController();
     final emailController = TextEditingController();
     final passwordController = TextEditingController();
+    var generatedPassword = _generateChildPassword();
+    passwordController.text = generatedPassword;
     final formKey = GlobalKey<FormState>();
     try {
       final input = await showDialog<Map<String, String>>(
         context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Create child account'),
-          content: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: nameController,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(
-                      labelText: 'Child name',
-                      prefixIcon: LiveIcon(Icons.person),
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, setDialogState) => AlertDialog(
+            title: const Text('Create child account'),
+            content: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: nameController,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        labelText: 'Child name',
+                        prefixIcon: LiveIcon(Icons.person),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Child email',
-                      prefixIcon: LiveIcon(Icons.email),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(
+                        labelText: 'Child email',
+                        prefixIcon: LiveIcon(Icons.email),
+                      ),
+                      validator: (value) {
+                        final email = value?.trim() ?? '';
+                        if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                            .hasMatch(email)) {
+                          return 'Enter a valid email address';
+                        }
+                        return null;
+                      },
                     ),
-                    validator: (value) {
-                      final email = value?.trim() ?? '';
-                      if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
-                          .hasMatch(email)) {
-                        return 'Enter a valid email address';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Temporary password',
-                      prefixIcon: LiveIcon(Icons.lock),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: passwordController,
+                      readOnly: true,
+                      decoration: InputDecoration(
+                        labelText: 'Generated child password',
+                        helperText:
+                            'This password will also appear in your profile.',
+                        prefixIcon: const LiveIcon(Icons.lock),
+                        suffixIcon: IconButton(
+                          tooltip: 'Generate another password',
+                          icon: const LiveIcon(Icons.refresh),
+                          onPressed: () {
+                            generatedPassword = _generateChildPassword();
+                            passwordController.text = generatedPassword;
+                            setDialogState(() {});
+                          },
+                        ),
+                      ),
+                      validator: (value) {
+                        final minLength = _auth.isUsingSupabase ? 6 : 4;
+                        if ((value ?? '').length < minLength) {
+                          return 'Use at least $minLength characters';
+                        }
+                        return null;
+                      },
                     ),
-                    validator: (value) {
-                      final minLength = _auth.isUsingSupabase ? 6 : 4;
-                      if ((value ?? '').length < minLength) {
-                        return 'Use at least $minLength characters';
-                      }
-                      return null;
-                    },
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  if (!formKey.currentState!.validate()) return;
+                  Navigator.pop(dialogContext, {
+                    'name': nameController.text.trim().isEmpty
+                        ? 'Child'
+                        : nameController.text.trim(),
+                    'email': emailController.text.trim(),
+                    'password': passwordController.text,
+                  });
+                },
+                child: const Text('Create account'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (!formKey.currentState!.validate()) return;
-                Navigator.pop(dialogContext, {
-                  'name': nameController.text.trim().isEmpty
-                      ? 'Child'
-                      : nameController.text.trim(),
-                  'email': emailController.text.trim(),
-                  'password': passwordController.text,
-                });
-              },
-              child: const Text('Create account'),
-            ),
-          ],
         ),
       );
       if (input == null) return;
@@ -374,11 +503,12 @@ class _HomeScreenState extends State<HomeScreen> {
         password: input['password']!,
         displayName: input['name']!,
       );
+      await _saveChildPassword(child.id, input['password']!);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              'Child account created for ${child.email}. Share the password securely.'),
+              'Child account created for ${child.email}. Password saved in your profile.'),
         ),
       );
       await _refresh();
@@ -400,6 +530,11 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          OutlinedButton.icon(
+              onPressed: _openRewards,
+              icon: const Icon(Icons.redeem_outlined),
+              label: const Text('Rewards & approvals')),
+          const SizedBox(height: 12),
           Row(
             children: [
               LiveIcon(
@@ -416,20 +551,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       ?.copyWith(fontWeight: FontWeight.w800),
                 ),
               ),
-              if (hasChildren && _family.isUsingSupabase)
-                const Chip(
-                  avatar: LiveIcon(Icons.check_circle, size: 16),
-                  label: Text('Linked'),
-                  visualDensity: VisualDensity.compact,
-                )
-              else
-                const Chip(
-                  avatar: LiveIcon(Icons.tune, size: 16),
-                  label: Text('Setup needed'),
-                  visualDensity: VisualDensity.compact,
-                ),
             ],
           ),
+          const SizedBox(height: 6),
+          if (hasChildren && _family.isUsingSupabase)
+            const Chip(
+              avatar: LiveIcon(Icons.check_circle, size: 16),
+              label: Text('Linked'),
+              visualDensity: VisualDensity.compact,
+            )
+          else
+            const Chip(
+              avatar: LiveIcon(Icons.tune, size: 16),
+              label: Text('Setup needed'),
+              visualDensity: VisualDensity.compact,
+            ),
           const SizedBox(height: 4),
           Text(
             'Complete these steps to get the most from Family Guard.',
@@ -514,9 +650,21 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Family Dashboard'),
+        title: Row(children: [
+          Image.asset('assets/branding/parent-logo.png',
+              width: 28,
+              height: 28,
+              fit: BoxFit.contain,
+              semanticLabel: 'Family Guard Parent'),
+          const SizedBox(width: 8),
+          const Expanded(
+              child: Text('Family Dashboard',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis)),
+        ]),
         actions: [
           IconButton(
             tooltip: 'Alerts',
@@ -576,7 +724,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: RefreshIndicator(
                     onRefresh: _refresh,
                     child: ListView(
-                      padding: const EdgeInsets.all(16),
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                       children: [
                         GlassCard(
                           child: Row(
@@ -622,7 +771,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ),
                                     const SizedBox(height: 3),
                                     Text(
-                                      '${_familyModel?.name ?? 'My Family'} · ${_children.length} protected child${_children.length == 1 ? '' : 'ren'}',
+                                      '${_familyModel?.name ?? 'My Family'} · ${_children.length} linked child${_children.length == 1 ? '' : 'ren'}',
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodyMedium
@@ -644,11 +793,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              'Protected Child Devices (${_children.length})',
+                            Expanded(
+                                child: Text(
+                              'Child devices (${_children.length})',
                               style: const TextStyle(
                                   fontWeight: FontWeight.bold, fontSize: 16),
-                            ),
+                            )),
                             TextButton.icon(
                               icon: const LiveIcon(Icons.add, size: 16),
                               onPressed: _createChildAccount,
@@ -704,10 +854,11 @@ class _HomeScreenState extends State<HomeScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            const Expanded(
+                child: Text(
               'Family Guard Features Suite',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
+            )),
             if (_newAlertCount > 0)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -797,9 +948,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 title: Row(
                   children: [
-                    const Text('Live Security & Tamper Alerts',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 14)),
+                    const Expanded(
+                        child: Text('Live Security & Tamper Alerts',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700, fontSize: 14))),
                     if (_newAlertCount > 0) ...[
                       const SizedBox(width: 6),
                       Container(
@@ -963,7 +1115,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             fontWeight: FontWeight.bold, fontSize: 15)),
                     const SizedBox(height: 2),
                     const LivePulseBadge(
-                      label: 'PROTECTED',
+                      label: 'CHILD PROFILE',
                       color: Color(0xFF2563EB),
                     ),
                   ],
@@ -1094,6 +1246,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _openRewards() {
+    final id = _familyModel?.id;
+    if (id == null) {
+      _showNoChildSnack();
+      return;
+    }
+    Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => RewardsScreen(
+            familyId: id,
+            children: _children,
+            familyService: widget.familyService)));
+  }
+
   Widget _buildDrawer() {
     final familyId = _familyModel?.id;
     return Drawer(
@@ -1109,10 +1274,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   LiveIcon(Icons.shield_moon_outlined,
                       color: Color(0xFFDC3545), size: 30),
                   SizedBox(width: 10),
-                  Text(
+                  Expanded(
+                      child: Text(
                     'Family Guard',
                     style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
-                  ),
+                  )),
                 ],
               ),
             ),
@@ -1121,6 +1287,13 @@ class _HomeScreenState extends State<HomeScreen> {
               label: 'Dashboard',
               onTap: () => Navigator.pop(context),
             ),
+            _drawerItem(
+                icon: Icons.redeem_outlined,
+                label: 'Rewards & approvals',
+                onTap: () {
+                  Navigator.pop(context);
+                  _openRewards();
+                }),
             const Padding(
               padding: EdgeInsets.fromLTRB(14, 22, 14, 8),
               child: Text(
@@ -1156,7 +1329,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             familyId: familyId,
                             childId: child.profileId,
                             childName: name,
-                            initialTab: 2,
+                            initialTab: 0,
                           ),
                         ),
                       );

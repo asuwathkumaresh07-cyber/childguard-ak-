@@ -161,7 +161,7 @@ class AuthService {
 
   Future<void> verifyCurrentPassword(String password) async {
     if (password.isEmpty) {
-      throw Exception('Enter your parent password to approve this request.');
+      throw Exception('Enter your current account password to continue.');
     }
     if (isUsingSupabase) {
       await _supabase.verifyCurrentPassword(password);

@@ -4,16 +4,18 @@ import 'package:shared/shared.dart';
 import '../widgets/user_error.dart';
 
 class BlockedAppsScreen extends StatefulWidget {
-  const BlockedAppsScreen({super.key, required this.familyId});
+  const BlockedAppsScreen(
+      {super.key, required this.familyId, this.familyService});
 
   final String familyId;
+  final FamilyService? familyService;
 
   @override
   State<BlockedAppsScreen> createState() => _BlockedAppsScreenState();
 }
 
 class _BlockedAppsScreenState extends State<BlockedAppsScreen> {
-  final _family = FamilyService();
+  late final _family = widget.familyService ?? FamilyService();
   final _packageController = TextEditingController();
   final _labelController = TextEditingController();
   List<BlockedAppEntry> _entries = [];
@@ -33,15 +35,18 @@ class _BlockedAppsScreenState extends State<BlockedAppsScreen> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() => _loading = true);
     try {
       await _family.reload();
       final entries = await _family.fetchBlockedApps(widget.familyId);
+      if (!mounted) return;
       setState(() {
         _entries = entries;
         _loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _loading = false);
       if (mounted) showAppError(context, 'load blocked apps', e);
     }
@@ -56,6 +61,7 @@ class _BlockedAppsScreenState extends State<BlockedAppsScreen> {
         packageName: pkg,
         appLabel: _labelController.text.trim(),
       );
+      if (!mounted) return;
       _packageController.clear();
       _labelController.clear();
       await _load();

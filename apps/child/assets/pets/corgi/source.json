@@ -1,0 +1,22 @@
+{
+  "project": "Corgi Codex Pet",
+  "repository": "https://github.com/cxian0928-afk/corgi-codex-pet",
+  "commit": "8ff219f7380cd40d70d38e0d076e75bf271b0c30",
+  "license": "MIT",
+  "layout": {
+    "columns": 8,
+    "rows": 9,
+    "frameWidth": 192,
+    "frameHeight": 208
+  },
+  "files": {
+    "spritesheet.webp": {
+      "url": "https://raw.githubusercontent.com/cxian0928-afk/corgi-codex-pet/8ff219f7380cd40d70d38e0d076e75bf271b0c30/build/package/spritesheet.webp",
+      "sha256": "bde2c9fa6e6bdc74c795d5dcc39a96586a5d8432db414b18ad0c88172e3f331e"
+    },
+    "LICENSE.txt": {
+      "url": "https://raw.githubusercontent.com/cxian0928-afk/corgi-codex-pet/8ff219f7380cd40d70d38e0d076e75bf271b0c30/LICENSE",
+      "sha256": "b11cd43dcc35ba2ebf5121aa377ad6e41b33bd99ae5ce3218336ba50818ba24d"
+    }
+  }
+}

@@ -69,9 +69,12 @@ class LivePulseBadge extends StatelessWidget {
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         if (icon != null) Icon(icon, size: 12, color: color) else dot,
         const SizedBox(width: 5),
-        Text(label,
-            style: TextStyle(
-                color: color, fontSize: 10, fontWeight: FontWeight.w700)),
+        Flexible(
+            child: Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    color: color, fontSize: 10, fontWeight: FontWeight.w700))),
       ]),
     );
   }

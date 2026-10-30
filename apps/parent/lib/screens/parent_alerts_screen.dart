@@ -31,6 +31,7 @@ class _ParentAlertsScreenState extends State<ParentAlertsScreen> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
       _error = null;
@@ -135,7 +136,7 @@ class _ParentAlertsScreenState extends State<ParentAlertsScreen> {
         actions: [
           IconButton(
             tooltip: 'Refresh alerts',
-            onPressed: _load,
+            onPressed: _loading ? null : _load,
             icon: const LiveIcon(Icons.refresh),
           ),
         ],
@@ -148,6 +149,7 @@ class _ParentAlertsScreenState extends State<ParentAlertsScreen> {
             : RefreshIndicator(
                 onRefresh: _load,
                 child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(16),
                   children: [
                     GlassCard(
@@ -167,9 +169,11 @@ class _ParentAlertsScreenState extends State<ParentAlertsScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  _alerts.isEmpty
-                                      ? 'Family is Protected'
-                                      : '${_alerts.length} Security Event${_alerts.length == 1 ? '' : 's'}',
+                                  _error != null
+                                      ? 'Alerts unavailable'
+                                      : _alerts.isEmpty
+                                          ? 'No recent alerts'
+                                          : '${_alerts.length} Security Event${_alerts.length == 1 ? '' : 's'}',
                                   style: Theme.of(context)
                                       .textTheme
                                       .titleMedium
@@ -177,9 +181,11 @@ class _ParentAlertsScreenState extends State<ParentAlertsScreen> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  _alerts.isEmpty
-                                      ? 'No critical alerts from your devices.'
-                                      : 'Tap on any alert below to inspect.',
+                                  _error != null
+                                      ? 'Refresh to check the latest device events.'
+                                      : _alerts.isEmpty
+                                          ? 'No critical alerts from your devices.'
+                                          : 'Recent device and location events.',
                                   style: Theme.of(context).textTheme.bodySmall,
                                 ),
                               ],

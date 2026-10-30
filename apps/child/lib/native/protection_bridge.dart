@@ -62,6 +62,9 @@ class PendingUsageEvent {
 }
 
 class ProtectionBridge {
+  Map<String, int> parentAccessUntil = {};
+  Map<String, int> baseDailyLimits = {};
+  int extraTimeExpiresAt = 0;
   static const _methods = MethodChannel('com.familyguard.child/protection');
   static const _domainEvents =
       EventChannel('com.familyguard.child/domain_events');
@@ -93,6 +96,15 @@ class ProtectionBridge {
         durationSeconds: map['durationSeconds'] as int,
       );
     });
+  }
+
+  Future<void> showFriendlyWarning(String message) async {
+    await _methods
+        .invokeMethod<void>('showFriendlyWarning', {'message': message});
+  }
+
+  Future<void> setProtectionMode(String mode) async {
+    await _methods.invokeMethod<void>('setProtectionMode', {'mode': mode});
   }
 
   Future<bool> prepareVpn() async {
@@ -179,12 +191,15 @@ class ProtectionBridge {
   Future<void> updateBlockedApps(List<String> packages) async {
     await _methods.invokeMethod<void>('updateBlockedApps', {
       'packages': packages,
+      'parentAccessUntil': parentAccessUntil,
     });
   }
 
   Future<void> updateDailyAppLimits(Map<String, int> limits) async {
     await _methods.invokeMethod<void>('updateDailyAppLimits', {
       'limits': limits,
+      'baseLimits': baseDailyLimits,
+      'extraTimeExpiresAt': extraTimeExpiresAt,
     });
   }
 

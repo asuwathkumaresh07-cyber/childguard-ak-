@@ -1,0 +1,29 @@
+{
+  "project": "OpenPets",
+  "repository": "https://github.com/OpenPetsHQ/openpets",
+  "commit": "e36c98b1850af52e5246535b88e2e4de48e74f15",
+  "license": "MIT",
+  "layout": {
+    "columns": 8,
+    "frameWidth": 192,
+    "frameHeight": 208
+  },
+  "files": {
+    "hoodie.webp": {
+      "url": "https://raw.githubusercontent.com/OpenPetsHQ/openpets/e36c98b1850af52e5246535b88e2e4de48e74f15/apps/desktop/assets/default-pet-spritesheet.webp",
+      "sha256": "c629f34bb7496f52757898e398f47623cdf57d65ddecce062cb03663806bb536"
+    },
+    "pajamas.webp": {
+      "url": "https://raw.githubusercontent.com/OpenPetsHQ/openpets/e36c98b1850af52e5246535b88e2e4de48e74f15/apps/desktop/assets/default-pet-outfits/pajamas.webp",
+      "sha256": "1424b06cccef9a15e5ab730fda84770ee1bf700405a11c24c97be55ee039924b"
+    },
+    "summer.webp": {
+      "url": "https://raw.githubusercontent.com/OpenPetsHQ/openpets/e36c98b1850af52e5246535b88e2e4de48e74f15/apps/desktop/assets/default-pet-outfits/summer.webp",
+      "sha256": "babc9bb0f0df4e7845c64fefe12ce67fb15824754685d75e720ce1e2c588cb81"
+    },
+    "LICENSE.txt": {
+      "url": "https://raw.githubusercontent.com/OpenPetsHQ/openpets/e36c98b1850af52e5246535b88e2e4de48e74f15/LICENSE",
+      "sha256": "ff1965c8f5bdebfb28f63b208ee8e0fa381ae5e9be4146e12206bf3eeeeb72ed"
+    }
+  }
+}

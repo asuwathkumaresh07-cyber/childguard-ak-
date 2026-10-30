@@ -38,6 +38,7 @@ class _BlockListScreenState extends State<BlockListScreen>
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() => _loading = true);
     try {
       await _family.reload();
@@ -70,6 +71,7 @@ class _BlockListScreenState extends State<BlockListScreen>
     if (domain.isEmpty) return;
     try {
       await _family.addBlockDomain(widget.familyId, domain);
+      if (!mounted) return;
       _domainController.clear();
       await _load();
     } catch (e) {

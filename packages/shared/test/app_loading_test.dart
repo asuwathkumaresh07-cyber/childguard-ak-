@@ -68,4 +68,22 @@ void main() {
     expect(find.text('Loading your family'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+  testWidgets(
+      'loading surface stays white and readable under a dark host theme',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+        theme: ThemeData.dark(),
+        home: const MediaQuery(
+            data: MediaQueryData(disableAnimations: true),
+            child: Scaffold(
+                body: AppLoadingView(
+                    message: 'Loading safely', detail: 'One moment')))));
+    await tester.pumpAndSettle();
+    final boxes = tester.widgetList<ColoredBox>(find.descendant(
+        of: find.byType(AppLoadingView), matching: find.byType(ColoredBox)));
+    expect(boxes.any((box) => box.color == Colors.white), isTrue);
+    expect(tester.widget<Text>(find.text('Loading safely')).style!.color,
+        AppPalette.navy);
+    expect(tester.takeException(), isNull);
+  });
 }

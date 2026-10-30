@@ -199,7 +199,7 @@ class SupabaseService {
     final user = currentAuthUser;
     final email = user?.email;
     if (c == null || user == null || email == null) {
-      throw Exception('Sign in to the Parent app before approving requests.');
+      throw Exception('Sign in before verifying your password.');
     }
 
     final result = await c.auth.signInWithPassword(
@@ -208,7 +208,7 @@ class SupabaseService {
     );
     if (result.user?.id != user.id) {
       await c.auth.signOut();
-      throw Exception('Reauthentication did not match the signed-in parent.');
+      throw Exception('Reauthentication did not match the signed-in account.');
     }
   }
 
@@ -1177,20 +1177,30 @@ class SupabaseService {
     if (currentAuthUser?.id != childId) {
       throw Exception('Only the signed-in child can request extra time.');
     }
-    final result = await c.rpc(
-      'create_child_extra_time_request',
-      params: {
-        'p_family_id': familyId,
-        'p_package_name': packageName.trim(),
-        'p_app_label': appLabel.trim(),
-        'p_requested_minutes': requestedMinutes,
-      },
-    );
-    if (result is! String || !{'pending', 'approved'}.contains(result)) {
-      throw Exception(
-          'Supabase returned an invalid extra-time request status.');
+    if (packageName.trim().isEmpty) throw ArgumentError('Choose an app.');
+    final pending = await c
+        .from('extra_time_requests')
+        .select('id')
+        .eq('family_id', familyId)
+        .eq('child_id', childId)
+        .eq('package_name', packageName.trim())
+        .eq('status', 'pending')
+        .limit(1);
+    if (pending.isNotEmpty) {
+      throw StateError(
+          'A request for this app is already waiting for your parent.');
     }
-    return result;
+    // Existing RLS only permits children to insert pending requests. Avoid the
+    // legacy RPC, which could approve automatically from bonuses/autonomy.
+    await c.from('extra_time_requests').insert({
+      'family_id': familyId,
+      'child_id': childId,
+      'package_name': packageName.trim(),
+      'app_label': appLabel.trim(),
+      'requested_minutes': requestedMinutes,
+      'status': 'pending',
+    });
+    return 'pending';
   }
 
   Future<List<ZoneEvent>> fetchZoneEvents({
@@ -1220,7 +1230,10 @@ class SupabaseService {
     if (c == null || uid == null) {
       throw Exception('Sign in to the Parent app before resolving requests.');
     }
-    if (approve && (grantedMinutes == null || grantedMinutes <= 0)) {
+    if (approve &&
+        (grantedMinutes == null ||
+            grantedMinutes <= 0 ||
+            grantedMinutes > 120)) {
       throw ArgumentError.value(
         grantedMinutes,
         'grantedMinutes',
@@ -1228,7 +1241,7 @@ class SupabaseService {
       );
     }
 
-    await c
+    final updated = await c
         .from('extra_time_requests')
         .update({
           'status': approve ? 'approved' : 'denied',
@@ -1238,7 +1251,12 @@ class SupabaseService {
         })
         .eq('family_id', familyId)
         .eq('id', id)
-        .eq('status', 'pending');
+        .eq('status', 'pending')
+        .select('id');
+    if (updated.length != 1) {
+      throw StateError(
+          'This request was already reviewed or you do not have permission. Refresh the rewards page.');
+    }
   }
 
   Future<List<VpnControlRequest>> fetchVpnControlRequests({

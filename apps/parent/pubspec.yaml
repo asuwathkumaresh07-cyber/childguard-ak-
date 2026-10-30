@@ -1,7 +1,7 @@
 name: parent
 description: Family Guard Parent — manage kids, block list, and activity logs.
 publish_to: none
-version: 1.0.0+1
+version: 1.0.9+10
 
 environment:
   sdk: ^3.5.0
@@ -28,3 +28,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/branding/

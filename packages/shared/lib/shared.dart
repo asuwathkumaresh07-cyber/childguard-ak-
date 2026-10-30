@@ -15,5 +15,7 @@ export 'src/app_loading.dart';
 export 'src/live_alert_banner.dart';
 export 'src/local_store.dart';
 export 'src/models.dart';
+export 'src/usage_breakdown.dart';
+export 'src/parent_reward_policy.dart';
 export 'src/supabase_config_dialog.dart';
 export 'src/supabase_service.dart';

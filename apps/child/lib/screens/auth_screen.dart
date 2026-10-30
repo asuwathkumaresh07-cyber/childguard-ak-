@@ -52,7 +52,7 @@ class _ChildAuthScreenState extends State<ChildAuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Family Guard Child'),
       ),
@@ -67,10 +67,12 @@ class _ChildAuthScreenState extends State<ChildAuthScreen> {
                   padding: const EdgeInsets.all(18),
                   child: Row(
                     children: [
-                      LiveIcon(
-                        Icons.shield_rounded,
-                        size: 38,
-                        color: Theme.of(context).colorScheme.primary,
+                      Image.asset(
+                        'assets/branding/child-logo.png',
+                        width: 72,
+                        height: 72,
+                        fit: BoxFit.contain,
+                        semanticLabel: 'Family Guard child logo',
                       ),
                       const SizedBox(width: 12),
                       Expanded(
